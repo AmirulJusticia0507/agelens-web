@@ -170,6 +170,7 @@ npm run dev
 ```
 
 Frontend tersedia di `http://localhost:3000`. Salin `.env.example` di root menjadi `.env` untuk konfigurasi backend lokal setelah layanan database, Redis, dan analisis dikembangkan.
+Halaman utama frontend menyediakan pencarian perusahaan berdasarkan nama, industri, dan kota, beserta pagination dan status kosong/error. Atur `NEXT_PUBLIC_API_BASE_URL` pada environment frontend ke base path API, misalnya `http://localhost:8000/api/v1`.
 
 ## System Design
 

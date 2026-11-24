@@ -44,7 +44,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 
 ## Frontend dan Kualitas
 
-- [ ] **Bangun antarmuka pencarian perusahaan**
+- [x] **Bangun antarmuka pencarian perusahaan**
   - Tampilkan hasil pencarian, filter, pagination, dan status kosong/error.
 - [ ] **Bangun halaman detail dan analitik**
   - Tampilkan riwayat lowongan, sumber, tanggal pengambilan, kutipan bukti, dan statistik.
