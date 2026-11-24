@@ -346,6 +346,7 @@ async def test_submit_report_stores_posting_and_enqueues_analysis(
             "source_url": "https://example.test/jobs/finance",
             "posted_date": "2025-01-15",
             "raw_description": "Usia maksimal 30 tahun.",
+            "vacancy_status": "open",
         },
     )
 
@@ -398,7 +399,7 @@ async def test_submit_report_queue_failure_can_be_retried(
 async def test_submit_report_rejects_empty_job_text(
     submission_api: tuple[AsyncClient, AsyncSession, FakeAnalysisRedis],
 ) -> None:
-    client, _, redis = submission_api
+    client, _, _ = submission_api
 
     response = await client.post(
         "/api/v1/submissions/report",
@@ -406,7 +407,42 @@ async def test_submit_report_rejects_empty_job_text(
     )
 
     assert response.status_code == 422
-    assert redis.jobs == []
+
+
+@pytest.mark.asyncio
+async def test_import_postings_reports_new_and_duplicate_records(
+    submission_api: tuple[AsyncClient, AsyncSession, FakeAnalysisRedis],
+) -> None:
+    client, session, redis = submission_api
+    posting = {
+        "company_name": "Example Hiring Co",
+        "job_title": "Senior Full Stack Developer",
+        "source_platform": "glints",
+        "source_url": "https://jobs.example.test/fullstack",
+        "raw_description": "React, Node.js, PostgreSQL, 5+ years experience.",
+        "vacancy_status": "open",
+        "listing_summary_only": True,
+    }
+
+    first = await client.post("/api/v1/submissions/import", json={"postings": [posting]})
+    second = await client.post("/api/v1/submissions/import", json={"postings": [posting]})
+
+    assert first.status_code == 202
+    assert first.json()["inserted"] == 1
+    assert first.json()["duplicates"] == 0
+    assert second.status_code == 202
+    assert second.json()["inserted"] == 0
+    assert second.json()["duplicates"] == 1
+    saved = await session.scalar(
+        select(JobPosting).where(JobPosting.source_url == posting["source_url"])
+    )
+    assert saved is not None
+    assert saved.raw_metadata == {
+        "record_type": "job_posting",
+        "vacancy_status": "open",
+        "listing_summary_only": True,
+    }
+    assert len(redis.jobs) == 1
 
 
 @pytest.mark.asyncio

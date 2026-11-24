@@ -117,6 +117,8 @@ def rank_company_matches(
         company = posting.company
         if company is None:
             continue
+        if not posting.raw_metadata or posting.raw_metadata.get("record_type") != "job_posting":
+            continue
 
         source_url = (posting.source_url or "").strip()
         if source_url:

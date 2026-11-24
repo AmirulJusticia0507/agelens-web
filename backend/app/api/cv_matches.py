@@ -97,7 +97,10 @@ async def analyze_cv_matches(
         await session.scalars(
             select(JobPosting)
             .options(selectinload(JobPosting.company))
-            .where(JobPosting.company_id.is_not(None))
+            .where(
+                JobPosting.company_id.is_not(None),
+                JobPosting.raw_metadata["record_type"].astext == "job_posting",
+            )
             .order_by(JobPosting.job_title.asc())
         )
     )

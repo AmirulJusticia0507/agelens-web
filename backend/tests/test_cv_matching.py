@@ -80,7 +80,7 @@ def test_rank_company_matches_returns_best_job_per_company() -> None:
         source_platform="test",
         content_hash=uuid4().hex,
         raw_description="Menggunakan React, Python, dan PostgreSQL.",
-        raw_metadata={"listing_summary_only": True},
+        raw_metadata={"record_type": "job_posting", "listing_summary_only": True},
     )
     other_job = JobPosting(
         id=uuid4(),
@@ -88,6 +88,7 @@ def test_rank_company_matches_returns_best_job_per_company() -> None:
         source_platform="test",
         content_hash=uuid4().hex,
         raw_description="Menggunakan React.",
+        raw_metadata={"record_type": "job_posting"},
     )
     company.job_postings.extend([best_job, other_job])
 
@@ -114,11 +115,13 @@ def test_rank_company_matches_hides_duplicate_canonical_source_urls() -> None:
         id=uuid4(), job_title="Full Stack", source_platform="test",
         source_url="https://example.test/jobs/1?utm_source=feed#top",
         content_hash=uuid4().hex, raw_description="React and Python",
+        raw_metadata={"record_type": "job_posting"},
     )
     duplicate = JobPosting(
         id=uuid4(), job_title="Full Stack Developer", source_platform="other",
         source_url="https://EXAMPLE.test/jobs/1?utm_source=feed",
         content_hash=uuid4().hex, raw_description="React and Python",
+        raw_metadata={"record_type": "job_posting"},
     )
     company.job_postings.extend([first, duplicate])
 

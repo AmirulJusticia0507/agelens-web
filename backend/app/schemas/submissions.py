@@ -13,6 +13,8 @@ class JobPostingReportRequest(BaseModel):
     source_url: str | None = Field(default=None, max_length=2048)
     posted_date: date | None = None
     raw_description: str = Field(min_length=1, max_length=20000)
+    vacancy_status: Literal["open", "unverified"] = "unverified"
+    listing_summary_only: bool = True
 
     @field_validator("job_title", "source_platform", "raw_description")
     @classmethod
@@ -35,3 +37,14 @@ class JobPostingReportResponse(BaseModel):
     job_posting_id: UUID
     analysis_status: Literal["pending", "processing", "completed", "failed"]
     created: bool
+
+
+class JobPostingImportRequest(BaseModel):
+    postings: list[JobPostingReportRequest] = Field(min_length=1, max_length=100)
+
+
+class JobPostingImportResponse(BaseModel):
+    total: int
+    inserted: int
+    duplicates: int
+    queued: int
