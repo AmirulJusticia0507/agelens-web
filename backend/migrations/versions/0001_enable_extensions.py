@@ -27,4 +27,3 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Keep shared PostgreSQL extensions installed when rolling back the app schema."""
-    pass
