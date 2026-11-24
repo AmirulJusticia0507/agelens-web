@@ -1,5 +1,6 @@
 from math import ceil
 from typing import Annotated
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -85,4 +86,20 @@ async def get_company(
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
 
-    return CompanyDetailResponse.model_validate(company)
+    response = CompanyDetailResponse.model_validate(company)
+    seen_urls: set[str] = set()
+    unique_postings = []
+    for posting in response.job_postings:
+        if not posting.source_url:
+            unique_postings.append(posting)
+            continue
+        parsed_url = urlsplit(posting.source_url.strip())
+        canonical_url = urlunsplit(
+            (parsed_url.scheme.casefold(), parsed_url.netloc.casefold(), parsed_url.path.rstrip("/"), parsed_url.query, "")
+        )
+        if canonical_url in seen_urls:
+            continue
+        seen_urls.add(canonical_url)
+        unique_postings.append(posting)
+    response.job_postings = unique_postings
+    return response

@@ -102,3 +102,27 @@ def test_rank_company_matches_returns_best_job_per_company() -> None:
     assert matches[0].matched_skills == ["React", "Python"]
     assert len(matches[0].jobs) == 2
     assert matches[0].jobs[0].summary_only is True
+
+
+def test_rank_company_matches_hides_duplicate_canonical_source_urls() -> None:
+    company = Company(
+        id=uuid4(),
+        normalized_name="dupe-company",
+        display_name="Dupe Company",
+    )
+    first = JobPosting(
+        id=uuid4(), job_title="Full Stack", source_platform="test",
+        source_url="https://example.test/jobs/1?utm_source=feed#top",
+        content_hash=uuid4().hex, raw_description="React and Python",
+    )
+    duplicate = JobPosting(
+        id=uuid4(), job_title="Full Stack Developer", source_platform="other",
+        source_url="https://EXAMPLE.test/jobs/1?utm_source=feed",
+        content_hash=uuid4().hex, raw_description="React and Python",
+    )
+    company.job_postings.extend([first, duplicate])
+
+    matches = rank_company_matches(["React", "Python"], [first, duplicate])
+
+    assert len(matches) == 1
+    assert len(matches[0].jobs) == 1
