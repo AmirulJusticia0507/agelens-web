@@ -13,6 +13,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 
+from app.api import cv_matches as cv_matches_api
 from app.api.dependencies import get_analysis_redis, get_session
 from app.config import get_settings
 from app.db.models import AgeAnalysis, Company, JobPosting
@@ -227,6 +228,85 @@ async def test_get_company_returns_not_found_for_unknown_id(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Company not found"}
+
+
+@pytest.mark.asyncio
+async def test_compare_cv_uploads_returns_separate_company_matches(
+    api: tuple[AsyncClient, AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, session = api
+    react_company = Company(
+        normalized_name=unique_name("cv-match-react"),
+        display_name="React Company",
+    )
+    cloud_company = Company(
+        normalized_name=unique_name("cv-match-cloud"),
+        display_name="Cloud Company",
+    )
+    react_job = JobPosting(
+        job_title="React Engineer",
+        source_platform="test",
+        content_hash=uuid4().hex,
+        raw_description="React and Python.",
+    )
+    cloud_job = JobPosting(
+        job_title="Cloud Engineer",
+        source_platform="test",
+        content_hash=uuid4().hex,
+        raw_description="AWS and Docker.",
+    )
+    react_company.job_postings.append(react_job)
+    cloud_company.job_postings.append(cloud_job)
+    session.add_all([react_company, cloud_company])
+    await session.flush()
+
+    def fake_extract_cv_text(content: bytes) -> str:
+        if content == b"%PDF-cv-one":
+            return "React Python; contact private@example.test"
+        return "AWS Docker; contact private@example.test"
+
+    monkeypatch.setattr(cv_matches_api, "extract_cv_text", fake_extract_cv_text)
+    response = await client.post(
+        "/api/v1/cv-matches/analyze",
+        files=[
+            ("cv_a", ("cv-one.pdf", b"%PDF-cv-one", "application/pdf")),
+            ("cv_b", ("cv-two.pdf", b"%PDF-cv-two", "application/pdf")),
+        ],
+    )
+
+    assert response.status_code == 200
+    profiles = response.json()["profiles"]
+    assert profiles[0]["label"] == "CV 1"
+    assert profiles[0]["skills"] == ["React", "Python"]
+    cv_one_companies = {company["display_name"] for company in profiles[0]["companies"]}
+    assert "React Company" in cv_one_companies
+    assert "Cloud Company" not in cv_one_companies
+    assert profiles[1]["label"] == "CV 2"
+    assert profiles[1]["skills"] == ["AWS", "Docker"]
+    cv_two_companies = {company["display_name"] for company in profiles[1]["companies"]}
+    assert "Cloud Company" in cv_two_companies
+    assert "React Company" not in cv_two_companies
+    assert "private@example.test" not in response.text
+
+
+@pytest.mark.asyncio
+async def test_compare_cv_upload_rejects_oversized_file(
+    api: tuple[AsyncClient, AsyncSession],
+) -> None:
+    client, _ = api
+    oversized = b"%PDF-" + b"x" * cv_matches_api.MAX_CV_FILE_BYTES
+
+    response = await client.post(
+        "/api/v1/cv-matches/analyze",
+        files=[
+            ("cv_a", ("cv-one.pdf", oversized, "application/pdf")),
+            ("cv_b", ("cv-two.pdf", b"%PDF-cv-two", "application/pdf")),
+        ],
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Ukuran setiap file CV maksimal 8 MB."
 
 
 @pytest.mark.asyncio

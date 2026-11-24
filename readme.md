@@ -55,6 +55,7 @@ MVP berfokus pada alur yang dapat diverifikasi dari awal hingga akhir:
 2. Sistem menyimpan lowongan dan menganalisis indikasi pembatasan usia.
 3. Pengguna mencari perusahaan dan memeriksa lowongan beserta bukti sumbernya.
 4. Dashboard menampilkan ringkasan statistik dari data yang sudah dianalisis.
+5. Pengguna dapat membandingkan dua CV PDF secara terpisah dengan keterampilan pada lowongan tersimpan.
 
 Untuk menjaga MVP tetap terukur, scraping terjadwal dan unggahan gambar/OCR bukan bagian dari alur awal. Sumber lowongan harus tetap tercatat agar hasil dapat ditelusuri; analisis bukan penilaian hukum atau klaim definitif mengenai perusahaan. Panduan deployment di bawah bersifat provider-agnostic; infrastruktur produksi belum diprovisikan.
 
@@ -63,6 +64,7 @@ Untuk menjaga MVP tetap terukur, scraping terjadwal dan unggahan gambar/OCR buka
 | API backend | FastAPI | Konsisten dengan rancangan awal dan mendukung validasi skema API |
 | Database | PostgreSQL 17, migrasi Alembic | Mendukung relasi, JSONB, dan ekstensi yang direncanakan |
 | Analisis teks | Adapter LLM dengan endpoint OpenAI-compatible yang dikonfigurasi melalui environment | Tidak mengunci implementasi ke satu vendor; kegagalan konfigurasi atau provider harus terlihat jelas |
+| Pencocokan CV | Ekstraksi teks PDF lokal dan pencocokan keterampilan berbasis kata kunci | Isi CV tidak disimpan atau dikirim ke provider AI; hasil dibatasi oleh data lowongan yang tersedia |
 | Antrean | ARQ dengan Redis untuk pekerjaan analisis asynchronous | Menggunakan worker Python async yang ringan dan terintegrasi dengan Redis |
 | Frontend | Next.js App Router, TypeScript, Tailwind CSS | Mengikuti stack rancangan dan mendukung halaman pencarian serta detail |
 | Sumber lowongan | Laporan teks pengguna pada MVP | Menghindari ketergantungan awal pada scraper lintas platform |
@@ -458,18 +460,23 @@ Endpoint daftar perusahaan menerima parameter `q`, `industry`, `city`, `page`, d
 
 `POST /api/v1/submissions/report` menerima `job_title` dan `raw_description`, serta metadata opsional `company_name`, `job_level`, `source_platform`, `source_url`, dan `posted_date`. `source_platform` default ke `user_report`; gambar dan OCR belum didukung. Respons `202 Accepted` berisi ID lowongan, status analisis, dan penanda apakah lowongan baru dibuat. Jika Redis tidak tersedia, endpoint mengembalikan `503` dan menyatakan bahwa laporan sudah tersimpan; kirim ulang laporan yang sama setelah Redis pulih untuk mencoba antrean kembali.
 
+`POST /api/v1/cv-matches/analyze` menerima dua file PDF (`cv_a` dan `cv_b`), masing-masing maksimal 8 MB dan 30 halaman. API mengekstrak teks secara lokal, membandingkan keterampilan teknis yang dikenali dengan judul dan deskripsi lowongan tersimpan, lalu mengelompokkan hasil berdasarkan perusahaan. Isi CV tidak disimpan ke database maupun dikirim ke layanan AI eksternal. PDF hasil scan/OCR belum didukung.
+
 `GET /api/v1/analytics/overview` merangkum seluruh lowongan tersimpan dan hasil analisisnya. `age_bias_rate_pct` adalah persentase lowongan yang terdeteksi membatasi usia dibanding seluruh lowongan yang sudah dianalisis, dibulatkan hingga dua desimal; lowongan pending/failed tidak masuk denominator. Breakdown industri dan level jabatan hanya menghitung lowongan yang sudah dianalisis, dengan kategori `null` untuk data yang tidak diketahui.
 
 | Method | Endpoint | Deskripsi |
 | --- | --- | --- |
 | `GET` | `/api/v1/companies` | Menampilkan daftar perusahaan berdasarkan skor bias, kota, industri, dan pencarian nama |
 | `GET` | `/api/v1/companies/{id}` | Menampilkan detail perusahaan, riwayat lowongan, dan bukti pembatasan usia |
+| `POST` | `/api/v1/cv-matches/analyze` | Membandingkan dua PDF CV dan merangking perusahaan berdasarkan kecocokan keterampilan |
 | `GET` | `/api/v1/analytics/overview` | Menampilkan ringkasan lowongan, klasifikasi restriksi, serta breakdown industri dan level jabatan |
 | `POST` | `/api/v1/submissions/report` | Menerima laporan teks lowongan dan memasukkan analisis ke antrean |
 
 ## Batasan dan Interpretasi Data
 
 - MVP hanya menerima teks lowongan yang dilaporkan pengguna. Scraping terjadwal, gambar/OCR, verifikasi manual, dan penghapusan laporan melalui API belum tersedia.
+- Pencocokan CV memakai daftar keterampilan teknis yang dikenali dan kata kunci pada lowongan tersimpan; hasil bukan penilaian semantik, tidak menilai seluruh kualifikasi, dan tidak mencakup lowongan di luar basis data.
+- Sebagian data uji mungkin hanya berupa ringkasan lowongan. Skor kecocokan terhadap ringkasan dapat melewatkan persyaratan yang tidak tercantum; periksa sumber asli sebelum mengambil keputusan.
 - Sumber, URL, tanggal lowongan, dan kutipan bukti ditampilkan untuk membantu penelusuran; laporan pengguna tidak otomatis berarti sumber telah diverifikasi secara independen.
 - Skor perusahaan adalah `age_restricted_jobs_count / total_jobs_analyzed * 100`. Hanya lowongan dengan analisis selesai yang masuk denominator; skor tidak tersedia bila belum ada lowongan dianalisis.
 - Klasifikasi dan confidence score berasal dari LLM dan dapat keliru. Hasil merupakan ringkasan teks yang tercatat, bukan penilaian hukum atau klaim definitif mengenai perusahaan.

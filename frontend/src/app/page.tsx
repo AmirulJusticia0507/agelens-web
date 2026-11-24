@@ -64,6 +64,9 @@ export default async function Home({
             <Link className="text-slate-600 transition hover:text-emerald-800" href="/analytics">
               Analitik
             </Link>
+            <Link className="text-slate-600 transition hover:text-emerald-800" href="/match-cv">
+              Cocokkan CV
+            </Link>
             <a className="text-slate-600 transition hover:text-emerald-800" href="#metodologi">
               Tentang skor
             </a>

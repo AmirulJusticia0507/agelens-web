@@ -48,6 +48,35 @@ export type CompanyDetail = CompanySummary & {
   job_postings: JobPosting[];
 };
 
+export type CvJobMatch = {
+  job_posting_id: string;
+  job_title: string;
+  source_platform: string;
+  source_url: string | null;
+  match_percentage: number;
+  matched_skills: string[];
+  summary_only: boolean;
+};
+
+export type CvCompanyMatch = {
+  company_id: string;
+  display_name: string;
+  match_percentage: number;
+  matched_skills: string[];
+  jobs: CvJobMatch[];
+};
+
+export type CvProfileMatch = {
+  label: "CV 1" | "CV 2";
+  skills: string[];
+  jobs_considered: number;
+  companies: CvCompanyMatch[];
+};
+
+export type CvMatchResponse = {
+  profiles: CvProfileMatch[];
+};
+
 export type CategoryAnalytics = {
   category: string | null;
   analyzed_jobs: number;
