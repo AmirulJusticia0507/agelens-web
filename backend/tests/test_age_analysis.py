@@ -84,6 +84,38 @@ async def test_analyzer_requests_and_validates_structured_output() -> None:
 
 
 @pytest.mark.asyncio
+async def test_analyzer_assesses_cv_match_on_demand() -> None:
+    settings = Settings(
+        llm_base_url="https://llm.example/v1",
+        llm_api_key=SecretStr("test-key"),
+        llm_model="test-model",
+    )
+    assessment = {
+        "summary": "Pengalaman backend dan frontend sesuai.",
+        "strengths": ["React", "PostgreSQL"],
+        "gaps": ["Kubernetes belum terlihat di CV"],
+        "fit_level": "moderate",
+        "caveat": "Bukan probabilitas diterima atau jaminan hasil seleksi.",
+    }
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["messages"][1]["content"] == "CV:\nReact PostgreSQL\n\nJOB DESCRIPTION:\nReact PostgreSQL Kubernetes"
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": json.dumps(assessment)}}]},
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await OpenAICompatibleAgeAnalyzer(settings, client).assess_cv_match(
+            "React PostgreSQL", "React PostgreSQL Kubernetes"
+        )
+
+    assert result.fit_level == "moderate"
+    assert result.gaps == ["Kubernetes belum terlihat di CV"]
+
+
+@pytest.mark.asyncio
 async def test_analyzer_surfaces_provider_status_without_response_body() -> None:
     settings = Settings(
         llm_base_url="https://llm.example/v1",

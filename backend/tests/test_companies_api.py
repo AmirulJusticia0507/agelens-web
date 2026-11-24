@@ -249,12 +249,14 @@ async def test_compare_cv_uploads_returns_separate_company_matches(
         source_platform="test",
         content_hash=uuid4().hex,
         raw_description="React and Python.",
+        raw_metadata={"record_type": "job_posting"},
     )
     cloud_job = JobPosting(
         job_title="Cloud Engineer",
         source_platform="test",
         content_hash=uuid4().hex,
         raw_description="AWS and Docker.",
+        raw_metadata={"record_type": "job_posting"},
     )
     react_company.job_postings.append(react_job)
     cloud_company.job_postings.append(cloud_job)

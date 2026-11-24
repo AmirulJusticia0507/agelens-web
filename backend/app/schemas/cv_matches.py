@@ -27,7 +27,16 @@ class CvProfileMatchResponse(BaseModel):
     skills: list[str]
     jobs_considered: int = Field(ge=0)
     companies: list[CvCompanyMatchResponse]
+    cv_session_id: str
 
 
 class CvMatchResponse(BaseModel):
     profiles: list[CvProfileMatchResponse]
+
+
+class CvJobAiAssessment(BaseModel):
+    summary: str
+    strengths: list[str]
+    gaps: list[str]
+    fit_level: Literal["strong", "moderate", "low"]
+    caveat: str

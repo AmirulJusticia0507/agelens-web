@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 
-import type { CvMatchResponse } from "@/lib/api";
+import type { CvJobAiAssessment, CvMatchResponse } from "@/lib/api";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
@@ -32,7 +32,40 @@ function formatPercentage(value: number): string {
   return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(value)}%`;
 }
 
-function CvResults({ result }: { result: CvMatchResponse }) {
+function CvResults({
+  result,
+}: {
+  result: CvMatchResponse;
+}) {
+  const [assessments, setAssessments] = useState<Record<string, CvJobAiAssessment>>({});
+  const [loadingJobs, setLoadingJobs] = useState<string[]>([]);
+  const [assessmentErrors, setAssessmentErrors] = useState<Record<string, string>>({});
+
+  async function loadAssessment(profile: "CV 1" | "CV 2", sessionId: string, jobId: string) {
+    setLoadingJobs((current) => [...current, jobId]);
+    setAssessmentErrors((current) => ({ ...current, [jobId]: "" }));
+    try {
+      const response = await fetch("/api/cv-matches", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cv_session_id: sessionId, profile, job_posting_id: jobId }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        setAssessmentErrors((current) => ({
+          ...current,
+          [jobId]: responseDetail(payload) ?? "Analisis AI gagal. Coba lagi.",
+        }));
+        return;
+      }
+      setAssessments((current) => ({ ...current, [jobId]: payload as CvJobAiAssessment }));
+    } catch {
+      setAssessmentErrors((current) => ({ ...current, [jobId]: "Tidak dapat menghubungi layanan AI." }));
+    } finally {
+      setLoadingJobs((current) => current.filter((id) => id !== jobId));
+    }
+  }
+
   return (
     <section aria-live="polite" className="mt-10 space-y-8">
       {result.profiles.map((profile) => (
@@ -91,7 +124,7 @@ function CvResults({ result }: { result: CvMatchResponse }) {
                       <h3 className="mt-1 text-lg font-semibold">{company.display_name}</h3>
                     </div>
                     <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-900">
-                      {formatPercentage(company.match_percentage)} cocok
+                      {formatPercentage(company.match_percentage)} skill cocok
                     </span>
                   </div>
                   <p className="mt-3 text-sm text-slate-600">
@@ -117,6 +150,31 @@ function CvResults({ result }: { result: CvMatchResponse }) {
                               Data lowongan ini berupa ringkasan; verifikasi kecocokan pada sumber
                               asli.
                             </p>
+                          )}
+                          {assessments[job.job_posting_id] ? (
+                            <div className="mt-3 rounded-xl bg-sky-50 p-4 text-sm text-slate-700">
+                              <p className="font-semibold text-slate-900">
+                                Analisis AI · {assessments[job.job_posting_id].fit_level === "strong" ? "Kuat" : assessments[job.job_posting_id].fit_level === "moderate" ? "Sedang" : "Rendah"}
+                              </p>
+                              <p className="mt-1">{assessments[job.job_posting_id].summary}</p>
+                              <p className="mt-2"><strong>Kekuatan:</strong> {assessments[job.job_posting_id].strengths.join("; ") || "Belum teridentifikasi"}</p>
+                              <p className="mt-1"><strong>Yang perlu dicek:</strong> {assessments[job.job_posting_id].gaps.join("; ") || "Tidak ada gap eksplisit terdeteksi"}</p>
+                              <p className="mt-2 text-xs">{assessments[job.job_posting_id].caveat}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                disabled={loadingJobs.includes(job.job_posting_id)}
+                                onClick={() => void loadAssessment(profile.label, profile.cv_session_id, job.job_posting_id)}
+                                className="mt-3 rounded-lg border border-sky-800 px-3 py-2 text-sm font-medium text-sky-900 disabled:opacity-60"
+                              >
+                                {loadingJobs.includes(job.job_posting_id) ? "Menganalisis…" : "Analisis AI lebih detail"}
+                              </button>
+                              {assessmentErrors[job.job_posting_id] && (
+                                <p role="alert" className="mt-2 text-sm text-rose-700">{assessmentErrors[job.job_posting_id]}</p>
+                              )}
+                            </>
                           )}
                           {sourceUrl && (
                             <a
@@ -192,7 +250,6 @@ export default function CvMatchForm() {
     if (cvB instanceof File && cvB.size > 0) {
       uploadData.append("cv_b", cvB);
     }
-
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/cv-matches", {
@@ -204,7 +261,8 @@ export default function CvMatchForm() {
         setError(responseDetail(payload) ?? "Pencocokan CV tidak berhasil. Coba lagi.");
         return;
       }
-      setResult(payload as CvMatchResponse);
+      const matchResult = payload as CvMatchResponse;
+      setResult(matchResult);
     } catch {
       setError("Tidak dapat menghubungi layanan pencocokan. Coba lagi.");
     } finally {

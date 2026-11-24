@@ -58,6 +58,14 @@ export type CvJobMatch = {
   summary_only: boolean;
 };
 
+export type CvJobAiAssessment = {
+  summary: string;
+  strengths: string[];
+  gaps: string[];
+  fit_level: "strong" | "moderate" | "low";
+  caveat: string;
+};
+
 export type CvCompanyMatch = {
   company_id: string;
   display_name: string;
@@ -71,6 +79,7 @@ export type CvProfileMatch = {
   skills: string[];
   jobs_considered: number;
   companies: CvCompanyMatch[];
+  cv_session_id: string;
 };
 
 export type CvMatchResponse = {
