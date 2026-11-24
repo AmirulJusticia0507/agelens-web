@@ -416,11 +416,13 @@ Endpoint daftar perusahaan menerima parameter `q`, `industry`, `city`, `page`, d
 
 `POST /api/v1/submissions/report` menerima `job_title` dan `raw_description`, serta metadata opsional `company_name`, `job_level`, `source_platform`, `source_url`, dan `posted_date`. `source_platform` default ke `user_report`; gambar dan OCR belum didukung. Respons `202 Accepted` berisi ID lowongan, status analisis, dan penanda apakah lowongan baru dibuat. Jika Redis tidak tersedia, endpoint mengembalikan `503` dan menyatakan bahwa laporan sudah tersimpan; kirim ulang laporan yang sama setelah Redis pulih untuk mencoba antrean kembali.
 
+`GET /api/v1/analytics/overview` merangkum seluruh lowongan tersimpan dan hasil analisisnya. `age_bias_rate_pct` adalah persentase lowongan yang terdeteksi membatasi usia dibanding seluruh lowongan yang sudah dianalisis, dibulatkan hingga dua desimal; lowongan pending/failed tidak masuk denominator. Breakdown industri dan level jabatan hanya menghitung lowongan yang sudah dianalisis, dengan kategori `null` untuk data yang tidak diketahui.
+
 | Method | Endpoint | Deskripsi |
 | --- | --- | --- |
 | `GET` | `/api/v1/companies` | Menampilkan daftar perusahaan berdasarkan skor bias, kota, industri, dan pencarian nama |
 | `GET` | `/api/v1/companies/{id}` | Menampilkan detail perusahaan, riwayat lowongan, dan bukti pembatasan usia |
-| `GET` | `/api/v1/analytics/overview` (rencana) | Menampilkan statistik industri, jabatan, dan rata-rata batas usia |
+| `GET` | `/api/v1/analytics/overview` | Menampilkan ringkasan lowongan, klasifikasi restriksi, serta breakdown industri dan level jabatan |
 | `POST` | `/api/v1/submissions/report` | Menerima laporan teks lowongan dan memasukkan analisis ke antrean |
 
 ## Tantangan dan Mitigasi

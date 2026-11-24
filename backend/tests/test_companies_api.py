@@ -9,7 +9,7 @@ from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from redis.exceptions import RedisError
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 
@@ -304,3 +304,85 @@ async def test_submit_report_rejects_empty_job_text(
 
     assert response.status_code == 422
     assert redis.jobs == []
+
+
+@pytest.mark.asyncio
+async def test_analytics_overview_aggregates_analyzed_jobs(
+    api: tuple[AsyncClient, AsyncSession],
+) -> None:
+    client, session = api
+    before_total = await session.scalar(select(func.count(JobPosting.id)))
+    before_analyzed = await session.scalar(select(func.count(AgeAnalysis.id)))
+    before_restricted = await session.scalar(
+        select(func.count(AgeAnalysis.id)).where(AgeAnalysis.has_age_restriction.is_(True))
+    )
+    company = Company(
+        normalized_name=unique_name("analytics"),
+        display_name="Analytics Test Company",
+        industry=f"Analytics {uuid4().hex}",
+    )
+    restricted_job = JobPosting(
+        job_title="Analytics Restricted",
+        job_level=f"Analytics Level {uuid4().hex}",
+        source_platform="user_report",
+        content_hash=uuid4().hex,
+        raw_description="Usia maksimal 30 tahun.",
+    )
+    restricted_job.analysis = AgeAnalysis(
+        has_age_restriction=True,
+        restriction_type="EXPLICIT",
+        max_age=30,
+        confidence_score=Decimal("0.950"),
+    )
+    unrestricted_job = JobPosting(
+        job_title="Analytics Unrestricted",
+        job_level=restricted_job.job_level,
+        source_platform="user_report",
+        content_hash=uuid4().hex,
+        raw_description="Fokus pada kompetensi.",
+    )
+    unrestricted_job.analysis = AgeAnalysis(
+        has_age_restriction=False,
+        restriction_type="NONE",
+        confidence_score=Decimal("0.900"),
+    )
+    company.job_postings.extend([restricted_job, unrestricted_job])
+    session.add(company)
+    session.add(
+        JobPosting(
+            job_title="Analytics Pending",
+            job_level=restricted_job.job_level,
+            source_platform="user_report",
+            content_hash=uuid4().hex,
+            raw_description="Belum dianalisis.",
+        )
+    )
+    await session.flush()
+
+    response = await client.get("/api/v1/analytics/overview")
+
+    assert response.status_code == 200
+    overview = response.json()
+    assert overview["total_submissions"] == int(before_total or 0) + 3
+    assert overview["analyzed_jobs"] == int(before_analyzed or 0) + 2
+    assert overview["restricted_jobs"] == int(before_restricted or 0) + 1
+    assert overview["age_bias_rate_pct"] == round(
+        (int(before_restricted or 0) + 1) / (int(before_analyzed or 0) + 2) * 100,
+        2,
+    )
+    assert {
+        row["restriction_type"]: row["analyzed_jobs"]
+        for row in overview["restriction_breakdown"]
+    }["EXPLICIT"] >= 1
+    industry = next(
+        row for row in overview["industry_breakdown"] if row["category"] == company.industry
+    )
+    assert industry["analyzed_jobs"] == 2
+    assert industry["restricted_jobs"] == 1
+    job_level = next(
+        row
+        for row in overview["job_level_breakdown"]
+        if row["category"] == restricted_job.job_level
+    )
+    assert job_level["analyzed_jobs"] == 2
+    assert job_level["age_bias_rate_pct"] == 50.0

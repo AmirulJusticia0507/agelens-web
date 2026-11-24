@@ -38,7 +38,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 - [x] **Bangun endpoint laporan pengguna**
   - Terima teks lowongan dan metadata sumber.
   - Tambahkan unggahan gambar/OCR hanya jika masuk scope MVP dan tersedia mekanisme penyimpanan yang sesuai.
-- [ ] **Bangun endpoint analitik**
+- [x] **Bangun endpoint analitik**
   - Sajikan ringkasan tren berdasarkan data yang tersimpan.
   - Jelaskan definisi metrik agar skor dan agregat dapat dipahami pengguna.
 
