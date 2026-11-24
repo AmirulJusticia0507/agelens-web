@@ -15,6 +15,7 @@
 - [Skema Database](#skema-database)
 - [Output Analisis AI](#output-analisis-ai)
 - [Endpoint API](#endpoint-api)
+- [Batasan dan Interpretasi Data](#batasan-dan-interpretasi-data)
 - [Tantangan dan Mitigasi](#tantangan-dan-mitigasi)
 
 ## Latar Belakang
@@ -89,21 +90,23 @@ Untuk menjaga MVP tetap terukur, scraping terjadwal, unggahan gambar/OCR, dan de
 
 ```powershell
 Copy-Item .env.example .env
-docker compose up -d db
+docker compose up -d db redis
 Set-Location backend
 ..\.venv\Scripts\alembic.exe upgrade head
 ```
 
-`.env.example` berisi kredensial khusus pengembangan lokal. Ganti nilainya untuk lingkungan non-lokal dan jangan commit file `.env`.
+Jalankan perintah `Copy-Item` dari root repository. `.env.example` berisi nilai khusus pengembangan lokal; ganti kredensial dan URL layanan untuk lingkungan lain, dan jangan commit file `.env`.
 
-Compose memetakan container database ke host port `5437` (dapat diubah melalui `POSTGRES_PORT`) agar tidak bentrok dengan PostgreSQL lokal atau project lain di port `5432`-`5436`. `DATABASE_URL` harus memakai port yang sama.
+Compose memetakan PostgreSQL ke host port `5437` (dapat diubah melalui `POSTGRES_PORT`) dan Redis ke `6380` (dapat diubah melalui `REDIS_PORT`). Sesuaikan `DATABASE_URL` dan `REDIS_URL` jika port diubah. Backend membuka pool Redis saat startup, jadi nyalakan kedua layanan sebelum menjalankan API.
 
-Migrasi membuat tabel `companies`, `job_postings`, dan `ai_age_analyses` beserta ekstensi `pg_trgm` (pencarian nama perusahaan), `pgcrypto` (`gen_random_uuid()`), dan `vector` (embedding tahap lanjutan). Untuk memeriksa dan membatalkan migrasi:
+Migrasi membuat tabel `companies`, `job_postings`, dan `ai_age_analyses` beserta ekstensi `pg_trgm` (pencarian nama perusahaan), `pgcrypto` (`gen_random_uuid()`), dan `vector` (embedding tahap lanjutan). Untuk memeriksa status migrasi dan kesesuaian model:
 
 ```powershell
 ..\.venv\Scripts\alembic.exe current
-..\.venv\Scripts\alembic.exe downgrade base
+..\.venv\Scripts\alembic.exe check
 ```
+
+`alembic downgrade base` menghapus tabel aplikasi dan datanya; gunakan hanya pada database lokal yang memang boleh di-reset.
 
 Migrasi mencakup tabel `companies`, `job_postings`, dan `ai_age_analyses` sesuai model di `app/db/models.py`, dengan index dan validasi berikut.
 
@@ -114,6 +117,7 @@ Migrasi mencakup tabel `companies`, `job_postings`, dan `ai_age_analyses` sesuai
 | `ix_companies_age_bias_score` | Urutan daftar perusahaan berdasarkan `age_bias_score` menurun |
 | `ix_ai_age_analyses_max_age` | Filter batas usia maksimal, hanya untuk baris dengan `max_age` terisi |
 | `ck_companies_age_bias_score_range` | `age_bias_score` dibatasi `0`-`100` |
+| `ck_job_postings_analysis_status` | Status analisis hanya `pending`, `processing`, `completed`, atau `failed` |
 | `ck_ai_age_analyses_restriction_type` | `restriction_type` hanya `EXPLICIT`, `IMPLICIT`, atau `NONE` |
 | `ck_ai_age_analyses_confidence_score_range` | `confidence_score` dibatasi `0`-`1` |
 | `ck_ai_age_analyses_age_range` | `min_age` tidak boleh lebih besar dari `max_age` |
@@ -134,11 +138,11 @@ Set-Location backend
 ..\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir . --reload
 ```
 
-API tersedia di `http://localhost:8000`; dokumentasi interaktif ada di `http://localhost:8000/docs`. Pemeriksaan health: `GET /api/v1/health`.
+API tersedia di `http://localhost:8000`; dokumentasi interaktif ada di `http://localhost:8000/docs`. Pemeriksaan health: `GET /api/v1/health`. Jalankan API dari terminal ini dan worker ARQ dari terminal backend lain.
 
 ### Antrean Analisis
 
-Analisis lowongan dijalankan oleh worker ARQ menggunakan Redis. Pastikan `REDIS_URL` di `.env` menunjuk ke Redis Compose (default `redis://localhost:6380/0`), lalu nyalakan layanan:
+Analisis lowongan dijalankan oleh worker ARQ menggunakan Redis. Pastikan `REDIS_URL` di root `.env` menunjuk ke Redis Compose (default `redis://localhost:6380/0`) dan layanan sudah menyala. Sebelum analisis berhasil, isi juga `LLM_API_KEY` dan `LLM_MODEL` dengan konfigurasi provider OpenAI-compatible yang valid.
 
 ```powershell
 docker compose up -d db redis
@@ -152,10 +156,12 @@ Jalankan worker dari direktori `backend` di terminal terpisah:
 
 Lowongan baru masuk antrean dengan status `pending`; worker memperbarui status menjadi `processing`, lalu `completed` atau `failed`. Kegagalan sementara dicoba ulang secara terbatas, dan ID job deterministik mencegah pengiriman job analisis ganda untuk lowongan yang sama.
 
-Untuk menjalankan test backend dari direktori `backend`:
+Jalankan pemeriksaan backend dari direktori `backend`:
 
 ```powershell
 ..\.venv\Scripts\python.exe -m pytest
+..\.venv\Scripts\python.exe -m ruff check app migrations tests
+..\.venv\Scripts\alembic.exe check
 ```
 
 ### Frontend
@@ -165,12 +171,18 @@ Di terminal lain dari root repository:
 ```powershell
 Set-Location frontend
 Copy-Item .env.example .env.local
-npm install
+npm ci
 npm run dev
 ```
 
-Frontend tersedia di `http://localhost:3000`. Salin `.env.example` di root menjadi `.env` untuk konfigurasi backend lokal setelah layanan database, Redis, dan analisis dikembangkan.
-Halaman utama frontend menyediakan pencarian perusahaan berdasarkan nama, industri, dan kota, beserta pagination dan status kosong/error. Halaman profil menampilkan riwayat lowongan, sumber, status analisis, dan bukti klasifikasi; halaman `/analytics` menampilkan ringkasan serta breakdown industri dan level jabatan. Atur `NEXT_PUBLIC_API_BASE_URL` pada environment frontend ke base path API, misalnya `http://localhost:8000/api/v1`.
+Next.js membaca `frontend/.env.local`; file contoh tersebut mengatur `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:8000/api/v1`). Root `.env` terpisah digunakan backend dan Compose. Frontend tersedia di `http://localhost:3000`.
+
+Halaman utama frontend menyediakan pencarian perusahaan berdasarkan nama, industri, dan kota, beserta pagination dan status kosong/error. Halaman profil menampilkan riwayat lowongan, sumber, status analisis, dan bukti klasifikasi; halaman `/analytics` menampilkan ringkasan serta breakdown industri dan level jabatan. Jalankan pemeriksaan frontend dari direktori `frontend`:
+
+```powershell
+npm run lint
+npm run build
+```
 
 ## System Design
 
@@ -324,7 +336,7 @@ Keterangan:
 
 - `normalized_name`: Nama perusahaan yang telah dinormalisasi.
 - `display_name`: Nama perusahaan yang ditampilkan kepada pengguna.
-- `age_bias_score`: Persentase lowongan yang membatasi usia, dengan rentang `0-100`.
+- `age_bias_score`: Persentase lowongan yang telah dianalisis dan terindikasi membatasi usia, dengan rentang `0-100`.
 
 ### Tabel Lowongan Kerja
 
@@ -340,7 +352,11 @@ CREATE TABLE job_postings (
     raw_description TEXT NOT NULL,
     raw_metadata JSONB,
     posted_date DATE,
-    scraped_at TIMESTAMPTZ DEFAULT NOW()
+    scraped_at TIMESTAMPTZ DEFAULT NOW(),
+    analysis_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+        CHECK (analysis_status IN ('pending', 'processing', 'completed', 'failed')),
+    analysis_attempts INT NOT NULL DEFAULT 0,
+    analysis_error TEXT
 );
 ```
 
@@ -425,6 +441,14 @@ Endpoint daftar perusahaan menerima parameter `q`, `industry`, `city`, `page`, d
 | `GET` | `/api/v1/companies/{id}` | Menampilkan detail perusahaan, riwayat lowongan, dan bukti pembatasan usia |
 | `GET` | `/api/v1/analytics/overview` | Menampilkan ringkasan lowongan, klasifikasi restriksi, serta breakdown industri dan level jabatan |
 | `POST` | `/api/v1/submissions/report` | Menerima laporan teks lowongan dan memasukkan analisis ke antrean |
+
+## Batasan dan Interpretasi Data
+
+- MVP hanya menerima teks lowongan yang dilaporkan pengguna. Scraping terjadwal, gambar/OCR, verifikasi manual, dan penghapusan laporan melalui API belum tersedia.
+- Sumber, URL, tanggal lowongan, dan kutipan bukti ditampilkan untuk membantu penelusuran; laporan pengguna tidak otomatis berarti sumber telah diverifikasi secara independen.
+- Skor perusahaan adalah `age_restricted_jobs_count / total_jobs_analyzed * 100`. Hanya lowongan dengan analisis selesai yang masuk denominator; skor tidak tersedia bila belum ada lowongan dianalisis.
+- Klasifikasi dan confidence score berasal dari LLM dan dapat keliru. Hasil merupakan ringkasan teks yang tercatat, bukan penilaian hukum atau klaim definitif mengenai perusahaan.
+- `EXPLICIT`, `IMPLICIT`, dan `NONE` adalah kategori analisis teks. `NONE` berarti model tidak menemukan indikasi pada teks yang dianalisis, bukan jaminan bahwa tidak ada praktik pembatasan usia.
 
 ## Tantangan dan Mitigasi
 

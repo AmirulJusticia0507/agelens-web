@@ -52,7 +52,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 - [x] **Tambahkan pengujian dan pemeriksaan kualitas**
   - Uji alur utama API, deduplikasi, validasi hasil analisis, dan tampilan inti.
   - Jalankan pemeriksaan lint, type-check, dan test yang tersedia.
-- [ ] **Lengkapi dokumentasi operasional**
+- [x] **Lengkapi dokumentasi operasional**
   - Perbarui README dengan cara instalasi, konfigurasi, menjalankan aplikasi, dan menjalankan test.
   - Dokumentasikan batasan data, sumber, dan metode analisis yang relevan.
 
