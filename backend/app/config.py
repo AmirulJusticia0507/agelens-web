@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     database_url: str = "postgresql+asyncpg://agelens:agelens-local-only@127.0.0.1:5437/agelens"
     redis_url: str = "redis://127.0.0.1:6380/0"
-    llm_base_url: str = "https://api.openai.com/v1"
+    llm_base_url: str = "https://griphubrouter.web.id/v1"
     llm_api_key: SecretStr | None = None
     llm_model: str | None = None
     llm_timeout_seconds: float = 30
