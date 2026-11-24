@@ -55,10 +55,10 @@ async def _read_cv_text(file: UploadFile) -> str:
 async def analyze_cv_matches(
     session: SessionDependency,
     cv_a: Annotated[UploadFile, File()],
-    cv_b: Annotated[UploadFile, File()],
+    cv_b: Annotated[UploadFile | None, File()] = None,
 ) -> CvMatchResponse:
     cv_a_text = await _read_cv_text(cv_a)
-    cv_b_text = await _read_cv_text(cv_b)
+    cv_b_text = await _read_cv_text(cv_b) if cv_b is not None else None
     job_postings = list(
         await session.scalars(
             select(JobPosting)
@@ -67,10 +67,8 @@ async def analyze_cv_matches(
             .order_by(JobPosting.job_title.asc())
         )
     )
+    profiles = [build_profile_match("CV 1", cv_a_text, job_postings)]
+    if cv_b_text is not None:
+        profiles.append(build_profile_match("CV 2", cv_b_text, job_postings))
 
-    return CvMatchResponse(
-        profiles=[
-            build_profile_match("CV 1", cv_a_text, job_postings),
-            build_profile_match("CV 2", cv_b_text, job_postings),
-        ]
-    )
+    return CvMatchResponse(profiles=profiles)

@@ -291,6 +291,26 @@ async def test_compare_cv_uploads_returns_separate_company_matches(
 
 
 @pytest.mark.asyncio
+async def test_compare_cv_upload_accepts_only_required_first_cv(
+    api: tuple[AsyncClient, AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = api
+    monkeypatch.setattr(cv_matches_api, "extract_cv_text", lambda _: "React Python")
+
+    response = await client.post(
+        "/api/v1/cv-matches/analyze",
+        files=[("cv_a", ("cv-one.pdf", b"%PDF-cv-one", "application/pdf"))],
+    )
+
+    assert response.status_code == 200
+    profiles = response.json()["profiles"]
+    assert len(profiles) == 1
+    assert profiles[0]["label"] == "CV 1"
+    assert profiles[0]["skills"] == ["React", "Python"]
+
+
+@pytest.mark.asyncio
 async def test_compare_cv_upload_rejects_oversized_file(
     api: tuple[AsyncClient, AsyncSession],
 ) -> None:

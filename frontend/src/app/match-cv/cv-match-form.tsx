@@ -162,27 +162,42 @@ export default function CvMatchForm() {
     setResult(null);
 
     const formData = new FormData(event.currentTarget);
-    for (const fieldName of ["cv_a", "cv_b"]) {
-      const file = formData.get(fieldName);
-      if (!(file instanceof File) || file.size === 0) {
-        setError("Pilih kedua file CV sebelum memulai pencocokan.");
+    const cvA = formData.get("cv_a");
+    const cvB = formData.get("cv_b");
+    if (!(cvA instanceof File) || cvA.size === 0) {
+      setError("Pilih file CV pertama sebelum memulai pencocokan.");
+      return;
+    }
+    if (!cvA.name.toLowerCase().endsWith(".pdf")) {
+      setError("File CV pertama harus berformat PDF.");
+      return;
+    }
+    if (cvA.size > MAX_FILE_BYTES) {
+      setError("Ukuran setiap file CV maksimal 8 MB.");
+      return;
+    }
+    if (cvB instanceof File && cvB.size > 0) {
+      if (!cvB.name.toLowerCase().endsWith(".pdf")) {
+        setError("File CV kedua harus berformat PDF.");
         return;
       }
-      if (!file.name.toLowerCase().endsWith(".pdf")) {
-        setError("Kedua file harus berformat PDF.");
-        return;
-      }
-      if (file.size > MAX_FILE_BYTES) {
+      if (cvB.size > MAX_FILE_BYTES) {
         setError("Ukuran setiap file CV maksimal 8 MB.");
         return;
       }
+    }
+
+    const uploadData = new FormData();
+    uploadData.append("cv_a", cvA);
+    if (cvB instanceof File && cvB.size > 0) {
+      uploadData.append("cv_b", cvB);
     }
 
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/cv-matches", {
         method: "POST",
-        body: formData,
+        body: uploadData,
       });
       const payload: unknown = await response.json();
       if (!response.ok) {
@@ -205,8 +220,8 @@ export default function CvMatchForm() {
       >
         <div className="grid gap-5 md:grid-cols-2">
           {[
-            { name: "cv_a", label: "CV pertama" },
-            { name: "cv_b", label: "CV kedua" },
+            { name: "cv_a", label: "CV pertama (wajib)", required: true },
+            { name: "cv_b", label: "CV kedua (opsional)", required: false },
           ].map((field) => (
             <div key={field.name}>
               <label htmlFor={field.name} className="mb-2 block text-sm font-semibold">
@@ -217,15 +232,15 @@ export default function CvMatchForm() {
                 name={field.name}
                 type="file"
                 accept="application/pdf,.pdf"
-                required
+                required={field.required}
                 className="block w-full rounded-xl border border-white/20 bg-white p-3 text-sm text-slate-900 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-emerald-900"
               />
             </div>
           ))}
         </div>
         <p className="mt-4 text-sm leading-6 text-emerald-50/90">
-          PDF harus berisi teks yang dapat dipilih, maksimal 8 MB dan 30 halaman per file. PDF
-          hasil scan belum didukung.
+          Unggah CV pertama; CV kedua opsional. PDF harus berisi teks yang dapat dipilih, maksimal
+          8 MB dan 30 halaman per file. PDF hasil scan belum didukung.
         </p>
         {error && (
           <p role="alert" className="mt-4 rounded-xl bg-rose-100 p-3 text-sm text-rose-900">

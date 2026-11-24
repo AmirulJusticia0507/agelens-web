@@ -19,12 +19,13 @@ export default function MatchCvPage() {
         <section className="py-10 sm:py-14">
           <p className="text-sm font-medium text-emerald-800">Pencocokan keterampilan</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Bandingkan dua CV dengan lowongan tersimpan
+            Cocokkan satu atau dua CV dengan lowongan tersimpan
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            Unggah dua PDF untuk melihat keterampilan yang terbaca dan perusahaan dengan lowongan
-            paling cocok. Pencocokan dilakukan di AgeLens; isi CV tidak disimpan ke database atau
-            dikirim ke layanan AI eksternal.
+            Unggah satu PDF untuk melihat keterampilan yang terbaca dan perusahaan dengan lowongan
+            paling cocok. Tambahkan CV kedua bila ingin membandingkan dua versi. Pencocokan
+            dilakukan di AgeLens; isi CV tidak disimpan ke database atau dikirim ke layanan AI
+            eksternal.
           </p>
         </section>
         <CvMatchForm />

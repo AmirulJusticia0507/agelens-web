@@ -460,7 +460,7 @@ Endpoint daftar perusahaan menerima parameter `q`, `industry`, `city`, `page`, d
 
 `POST /api/v1/submissions/report` menerima `job_title` dan `raw_description`, serta metadata opsional `company_name`, `job_level`, `source_platform`, `source_url`, dan `posted_date`. `source_platform` default ke `user_report`; gambar dan OCR belum didukung. Respons `202 Accepted` berisi ID lowongan, status analisis, dan penanda apakah lowongan baru dibuat. Jika Redis tidak tersedia, endpoint mengembalikan `503` dan menyatakan bahwa laporan sudah tersimpan; kirim ulang laporan yang sama setelah Redis pulih untuk mencoba antrean kembali.
 
-`POST /api/v1/cv-matches/analyze` menerima dua file PDF (`cv_a` dan `cv_b`), masing-masing maksimal 8 MB dan 30 halaman. API mengekstrak teks secara lokal, membandingkan keterampilan teknis yang dikenali dengan judul dan deskripsi lowongan tersimpan, lalu mengelompokkan hasil berdasarkan perusahaan. Isi CV tidak disimpan ke database maupun dikirim ke layanan AI eksternal. PDF hasil scan/OCR belum didukung.
+`POST /api/v1/cv-matches/analyze` menerima satu file PDF wajib (`cv_a`) dan satu file PDF opsional (`cv_b`), masing-masing maksimal 8 MB dan 30 halaman. API mengekstrak teks secara lokal, membandingkan keterampilan teknis yang dikenali dengan judul dan deskripsi lowongan tersimpan, lalu mengelompokkan hasil berdasarkan perusahaan. Isi CV tidak disimpan ke database maupun dikirim ke layanan AI eksternal. PDF hasil scan/OCR belum didukung.
 
 `GET /api/v1/analytics/overview` merangkum seluruh lowongan tersimpan dan hasil analisisnya. `age_bias_rate_pct` adalah persentase lowongan yang terdeteksi membatasi usia dibanding seluruh lowongan yang sudah dianalisis, dibulatkan hingga dua desimal; lowongan pending/failed tidak masuk denominator. Breakdown industri dan level jabatan hanya menghitung lowongan yang sudah dianalisis, dengan kategori `null` untuk data yang tidak diketahui.
 
@@ -468,7 +468,7 @@ Endpoint daftar perusahaan menerima parameter `q`, `industry`, `city`, `page`, d
 | --- | --- | --- |
 | `GET` | `/api/v1/companies` | Menampilkan daftar perusahaan berdasarkan skor bias, kota, industri, dan pencarian nama |
 | `GET` | `/api/v1/companies/{id}` | Menampilkan detail perusahaan, riwayat lowongan, dan bukti pembatasan usia |
-| `POST` | `/api/v1/cv-matches/analyze` | Membandingkan dua PDF CV dan merangking perusahaan berdasarkan kecocokan keterampilan |
+| `POST` | `/api/v1/cv-matches/analyze` | Mencocokkan satu PDF CV, atau membandingkan dua CV, dengan lowongan tersimpan |
 | `GET` | `/api/v1/analytics/overview` | Menampilkan ringkasan lowongan, klasifikasi restriksi, serta breakdown industri dan level jabatan |
 | `POST` | `/api/v1/submissions/report` | Menerima laporan teks lowongan dan memasukkan analisis ke antrean |
 

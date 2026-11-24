@@ -46,9 +46,9 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 
 - [x] **Bangun antarmuka pencarian perusahaan**
   - Tampilkan hasil pencarian, filter, pagination, dan status kosong/error.
-- [x] **Tambahkan pencocokan dua CV**
-  - Ekstrak keterampilan dari dua PDF secara lokal tanpa menyimpan isi CV.
-  - Bandingkan keterampilan tiap CV dengan lowongan tersimpan dan urutkan perusahaan.
+- [x] **Tambahkan pencocokan CV**
+  - Ekstrak keterampilan dari satu atau dua PDF secara lokal tanpa menyimpan isi CV.
+  - Cocokkan keterampilan setiap CV yang diunggah dengan lowongan tersimpan dan urutkan perusahaan.
   - Jelaskan keterbatasan pencocokan kata kunci dan data ringkasan.
 - [x] **Bangun halaman detail dan analitik**
   - Tampilkan riwayat lowongan, sumber, tanggal pengambilan, kutipan bukti, dan statistik.
