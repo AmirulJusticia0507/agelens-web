@@ -15,6 +15,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Agelens Web",
   description: "Transparansi batasan usia pada lowongan kerja di Indonesia.",
+  applicationName: "Agelens",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Agelens",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -23,7 +33,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <script src="/register-sw.js" defer />
+      </body>
     </html>
   );
 }
