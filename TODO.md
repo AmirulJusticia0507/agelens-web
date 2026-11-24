@@ -19,7 +19,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 
 ## Backend dan Analisis
 
-- [ ] **Bangun API profil perusahaan**
+- [x] **Bangun API profil perusahaan**
   - Implementasikan daftar perusahaan dengan pencarian dan filter.
   - Implementasikan detail perusahaan beserta lowongan dan bukti analisis.
   - Validasi input, pagination, dan respons error.

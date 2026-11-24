@@ -45,11 +45,6 @@ class Company(Base):
             postgresql_using="gin",
         ),
         Index("ix_companies_age_bias_score", text("age_bias_score DESC")),
-        Index(
-            "ix_companies_display_name_fts",
-            text("to_tsvector('indonesian', display_name)"),
-            postgresql_using="gin",
-        ),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -67,7 +62,10 @@ class Company(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    job_postings: Mapped[list[JobPosting]] = relationship(back_populates="company")
+    job_postings: Mapped[list[JobPosting]] = relationship(
+        back_populates="company",
+        order_by=lambda: JobPosting.scraped_at.desc(),
+    )
 
 
 class JobPosting(Base):

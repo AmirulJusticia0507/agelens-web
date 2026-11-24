@@ -390,6 +390,8 @@ Backend menggunakan Pydantic dan Pydantic JSON schema pada FastAPI agar respons 
 
 ## Endpoint API
 
+Endpoint daftar perusahaan menerima parameter `q`, `industry`, `city`, `page`, dan `page_size` (default 20, maksimum 100). Respons berisi item, nomor halaman, total data, dan jumlah halaman. Detail perusahaan menyertakan riwayat lowongan beserta sumber dan hasil analisis yang tersedia.
+
 | Method | Endpoint | Deskripsi |
 | --- | --- | --- |
 | `GET` | `/api/v1/companies` | Menampilkan daftar perusahaan berdasarkan skor bias, kota, industri, dan pencarian nama |
