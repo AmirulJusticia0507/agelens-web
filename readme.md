@@ -6,6 +6,7 @@
 
 - [Latar Belakang](#latar-belakang)
 - [Tujuan Sistem](#tujuan-sistem)
+- [Scope MVP dan Keputusan Teknis](#scope-mvp-dan-keputusan-teknis)
 - [Tech Stack](#tech-stack)
 - [System Design](#system-design)
 - [Arsitektur Data Pipeline](#arsitektur-data-pipeline)
@@ -43,17 +44,40 @@ PostgreSQL digunakan sebagai database utama dengan memanfaatkan:
 
 Arsitektur ini menjaga stack tetap ringkas tanpa perlu menambahkan database NoSQL atau vector database terpisah.
 
+## Scope MVP dan Keputusan Teknis
+
+MVP berfokus pada alur yang dapat diverifikasi dari awal hingga akhir:
+
+1. Pengguna mengirim teks lowongan dan informasi sumber.
+2. Sistem menyimpan lowongan dan menganalisis indikasi pembatasan usia.
+3. Pengguna mencari perusahaan dan memeriksa lowongan beserta bukti sumbernya.
+4. Dashboard menampilkan ringkasan statistik dari data yang sudah dianalisis.
+
+Untuk menjaga MVP tetap terukur, scraping terjadwal, unggahan gambar/OCR, dan deployment produksi bukan bagian dari alur awal. Sumber lowongan harus tetap tercatat agar hasil dapat ditelusuri; analisis bukan penilaian hukum atau klaim definitif mengenai perusahaan.
+
+| Keputusan | Pilihan MVP | Alasan |
+| --- | --- | --- |
+| API backend | FastAPI | Konsisten dengan rancangan awal dan mendukung validasi skema API |
+| Database | PostgreSQL 17, migrasi Alembic | Mendukung relasi, JSONB, dan ekstensi yang direncanakan |
+| Analisis teks | Adapter LLM dengan endpoint OpenAI-compatible yang dikonfigurasi melalui environment | Tidak mengunci implementasi ke satu vendor; kegagalan konfigurasi atau provider harus terlihat jelas |
+| Antrean | ARQ dengan Redis untuk pekerjaan analisis asynchronous | Menggunakan worker Python async yang ringan dan terintegrasi dengan Redis |
+| Frontend | Next.js App Router, TypeScript, Tailwind CSS | Mengikuti stack rancangan dan mendukung halaman pencarian serta detail |
+| Sumber lowongan | Laporan teks pengguna pada MVP | Menghindari ketergantungan awal pada scraper lintas platform |
+| Gambar dan OCR | Ditunda setelah MVP | Memerlukan penyimpanan file dan evaluasi OCR tersendiri |
+
 ## Tech Stack
 
 | Layer | Teknologi | Alasan |
 | --- | --- | --- |
-| Backend dan AI worker | Python, FastAPI, Celery atau ARQ | Ekosistem AI/NLP yang matang, dokumentasi API otomatis, dan pemrosesan antrean yang efisien |
-| Scraper engine | Playwright atau Crawl4AI | Mendukung portal yang merender halaman secara client-side menggunakan JavaScript |
+| Backend dan AI worker | Python, FastAPI, ARQ | Ekosistem AI/NLP yang matang, dokumentasi API otomatis, dan worker asynchronous berbasis Redis |
+| Scraper engine | Playwright atau Crawl4AI (tahap lanjutan) | Mendukung portal yang merender halaman secara client-side; scraping tidak termasuk scope MVP |
 | Database | PostgreSQL 17 dengan JSONB dan pgvector | Menyimpan data relasional, payload mentah, serta embedding teks |
 | Frontend | Next.js App Router, TypeScript, Tailwind CSS | Mendukung SEO, SSR, dashboard pencarian, dan visualisasi data |
 | Message broker | Redis | Memisahkan antrean scraping dan pemanggilan API LLM dari server utama |
 
 ## System Design
+
+Bagian ini menggambarkan arsitektur target setelah komponen ingestion dan scraping lanjutan tersedia. Scope MVP saat ini dijelaskan pada [Scope MVP dan Keputusan Teknis](#scope-mvp-dan-keputusan-teknis).
 
 ### Alur Tingkat Tinggi
 

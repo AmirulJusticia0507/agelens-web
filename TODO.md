@@ -4,7 +4,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 
 ## Fondasi
 
-- [ ] **Tentukan scope MVP dan keputusan teknis**
+- [x] **Tentukan scope MVP dan keputusan teknis**
   - Tetapkan alur pengguna inti dan batas MVP.
   - Putuskan pilihan worker queue, penyedia/model LLM, dan strategi konfigurasi berdasarkan kebutuhan serta stack repository.
   - Dokumentasikan keputusan penting di README.
