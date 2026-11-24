@@ -8,16 +8,34 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
+from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 
-from app.api.dependencies import get_session
+from app.api.dependencies import get_analysis_redis, get_session
 from app.config import get_settings
 from app.db.models import AgeAnalysis, Company, JobPosting
 from app.main import app
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+
+class FakeAnalysisRedis:
+    def __init__(self) -> None:
+        self.fail = False
+        self.jobs: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+
+    async def enqueue_job(
+        self,
+        function_name: str,
+        *args: object,
+        **kwargs: object,
+    ) -> object | None:
+        self.jobs.append((function_name, args, kwargs))
+        if self.fail:
+            raise RedisError("Redis unavailable")
+        return object()
 
 
 @pytest.fixture(scope="module")
@@ -68,6 +86,19 @@ async def api(
         await transaction.rollback()
         await connection.close()
         await engine.dispose()
+
+
+@pytest.fixture
+async def submission_api(
+    api: tuple[AsyncClient, AsyncSession],
+) -> AsyncIterator[tuple[AsyncClient, AsyncSession, FakeAnalysisRedis]]:
+    client, session = api
+    redis = FakeAnalysisRedis()
+    app.dependency_overrides[get_analysis_redis] = lambda: redis
+    try:
+        yield client, session, redis
+    finally:
+        app.dependency_overrides.pop(get_analysis_redis, None)
 
 
 def unique_name(name: str) -> str:
@@ -195,3 +226,81 @@ async def test_get_company_returns_not_found_for_unknown_id(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Company not found"}
+
+
+@pytest.mark.asyncio
+async def test_submit_report_stores_posting_and_enqueues_analysis(
+    submission_api: tuple[AsyncClient, AsyncSession, FakeAnalysisRedis],
+) -> None:
+    client, session, redis = submission_api
+
+    response = await client.post(
+        "/api/v1/submissions/report",
+        json={
+            "company_name": "PT Contoh Kerja",
+            "job_title": "Finance Associate",
+            "source_platform": "company_site",
+            "source_url": "https://example.test/jobs/finance",
+            "posted_date": "2025-01-15",
+            "raw_description": "Usia maksimal 30 tahun.",
+        },
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["analysis_status"] == "pending"
+    assert body["created"] is True
+    posting = await session.get(JobPosting, body["job_posting_id"])
+    assert posting is not None
+    assert posting.source_platform == "company_site"
+    assert posting.source_url == "https://example.test/jobs/finance"
+    assert posting.posted_date.isoformat() == "2025-01-15"
+    assert redis.jobs == [
+        (
+            "analyze_job_posting",
+            (body["job_posting_id"],),
+            {"_job_id": f"age-analysis:{body['job_posting_id']}"},
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_submit_report_queue_failure_can_be_retried(
+    submission_api: tuple[AsyncClient, AsyncSession, FakeAnalysisRedis],
+) -> None:
+    client, session, redis = submission_api
+    redis.fail = True
+    report = {
+        "job_title": "Accountant",
+        "raw_description": "Pengalaman akuntansi minimal dua tahun.",
+    }
+
+    failed_response = await client.post("/api/v1/submissions/report", json=report)
+
+    assert failed_response.status_code == 503
+    assert "Report was saved" in failed_response.json()["detail"]
+    redis.fail = False
+
+    retry_response = await client.post("/api/v1/submissions/report", json=report)
+
+    assert retry_response.status_code == 202
+    assert retry_response.json()["created"] is False
+    posting = await session.get(JobPosting, retry_response.json()["job_posting_id"])
+    assert posting is not None
+    assert posting.analysis_status == "pending"
+    assert len(redis.jobs) == 2
+
+
+@pytest.mark.asyncio
+async def test_submit_report_rejects_empty_job_text(
+    submission_api: tuple[AsyncClient, AsyncSession, FakeAnalysisRedis],
+) -> None:
+    client, _, redis = submission_api
+
+    response = await client.post(
+        "/api/v1/submissions/report",
+        json={"job_title": "  ", "raw_description": "Deskripsi."},
+    )
+
+    assert response.status_code == 422
+    assert redis.jobs == []

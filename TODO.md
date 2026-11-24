@@ -35,7 +35,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 - [x] **Tambahkan pemrosesan antrean**
   - Proses ingestion dan analisis secara asynchronous menggunakan worker dan broker yang dipilih.
   - Tangani retry, status pekerjaan, dan kegagalan agar tidak menghasilkan data ganda.
-- [ ] **Bangun endpoint laporan pengguna**
+- [x] **Bangun endpoint laporan pengguna**
   - Terima teks lowongan dan metadata sumber.
   - Tambahkan unggahan gambar/OCR hanya jika masuk scope MVP dan tersedia mekanisme penyimpanan yang sesuai.
 - [ ] **Bangun endpoint analitik**

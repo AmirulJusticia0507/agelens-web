@@ -414,12 +414,14 @@ Analisis menggunakan adapter OpenAI-compatible yang dikonfigurasi melalui `LLM_B
 
 Endpoint daftar perusahaan menerima parameter `q`, `industry`, `city`, `page`, dan `page_size` (default 20, maksimum 100). Respons berisi item, nomor halaman, total data, dan jumlah halaman. Detail perusahaan menyertakan riwayat lowongan beserta sumber dan hasil analisis yang tersedia.
 
+`POST /api/v1/submissions/report` menerima `job_title` dan `raw_description`, serta metadata opsional `company_name`, `job_level`, `source_platform`, `source_url`, dan `posted_date`. `source_platform` default ke `user_report`; gambar dan OCR belum didukung. Respons `202 Accepted` berisi ID lowongan, status analisis, dan penanda apakah lowongan baru dibuat. Jika Redis tidak tersedia, endpoint mengembalikan `503` dan menyatakan bahwa laporan sudah tersimpan; kirim ulang laporan yang sama setelah Redis pulih untuk mencoba antrean kembali.
+
 | Method | Endpoint | Deskripsi |
 | --- | --- | --- |
 | `GET` | `/api/v1/companies` | Menampilkan daftar perusahaan berdasarkan skor bias, kota, industri, dan pencarian nama |
 | `GET` | `/api/v1/companies/{id}` | Menampilkan detail perusahaan, riwayat lowongan, dan bukti pembatasan usia |
 | `GET` | `/api/v1/analytics/overview` (rencana) | Menampilkan statistik industri, jabatan, dan rata-rata batas usia |
-| `POST` | `/api/v1/submissions/report` (rencana) | Menerima laporan lowongan untuk diproses dan dikirim ke antrean analisis |
+| `POST` | `/api/v1/submissions/report` | Menerima laporan teks lowongan dan memasukkan analisis ke antrean |
 
 ## Tantangan dan Mitigasi
 
