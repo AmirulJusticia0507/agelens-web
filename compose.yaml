@@ -1,0 +1,19 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agelens}
+      POSTGRES_USER: ${POSTGRES_USER:-agelens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agelens-local-only}
+    ports:
+      - "${POSTGRES_PORT:-5437}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agelens} -d ${POSTGRES_DB:-agelens}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

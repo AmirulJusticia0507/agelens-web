@@ -12,7 +12,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
   - Siapkan backend FastAPI dan frontend Next.js sesuai struktur proyek.
   - Tambahkan konfigurasi lingkungan, contoh konfigurasi tanpa rahasia, serta instruksi pengembangan lokal.
   - Pastikan pemeriksaan format, lint, dan test dasar dapat dijalankan.
-- [ ] **Siapkan PostgreSQL dan migrasi**
+- [x] **Siapkan PostgreSQL dan migrasi**
   - Buat migrasi untuk tabel perusahaan, lowongan, dan analisis AI.
   - Aktifkan ekstensi PostgreSQL yang memang digunakan.
   - Tambahkan index dan validasi skema yang diperlukan.
