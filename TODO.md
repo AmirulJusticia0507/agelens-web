@@ -27,7 +27,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
   - Buat alur penerimaan lowongan dari sumber yang disetujui serta laporan pengguna.
   - Normalisasi nama perusahaan dan cegah duplikasi lowongan.
   - Simpan URL sumber dan waktu pengambilan untuk setiap lowongan.
-- [ ] **Bangun analisis age-bias**
+- [x] **Bangun analisis age-bias**
   - Definisikan skema output terstruktur dan validasi hasilnya.
   - Klasifikasikan lowongan sebagai `EXPLICIT`, `IMPLICIT`, atau `NONE`.
   - Simpan rentang usia, kutipan bukti, alasan, confidence score, dan model yang digunakan.

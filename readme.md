@@ -380,6 +380,8 @@ CREATE INDEX ix_ai_age_analyses_max_age
 
 Backend menggunakan Pydantic dan Pydantic JSON schema pada FastAPI agar respons LLM dapat divalidasi sebelum disimpan.
 
+Analisis menggunakan adapter OpenAI-compatible yang dikonfigurasi melalui `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, dan `LLM_TIMEOUT_SECONDS` di `.env`. Hasil wajib konsisten dengan tipe restriksi dan menyertakan bukti untuk klasifikasi restriktif. Konfigurasi yang kosong, respons provider gagal, atau JSON yang tidak valid menghasilkan error eksplisit; sistem tidak menggantinya dengan hasil heuristik.
+
 ```json
 {
   "has_age_restriction": true,
