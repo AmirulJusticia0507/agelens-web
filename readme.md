@@ -236,6 +236,10 @@ Hasil analisis disimpan di PostgreSQL, kemudian ditampilkan melalui API dan dash
 5. **Presentation**
    - Menyajikan profil perusahaan dan statistik analitik.
 
+### Ingestion MVP
+
+Layanan backend `ingest_job_posting` menormalisasi nama perusahaan, menghitung hash SHA-256 dari nama perusahaan, judul, dan deskripsi, lalu menyimpan lowongan yang belum pernah diterima. Pencocokan nama menggunakan `pg_trgm`; jika kandidat serupa ambigu, sistem membuat record perusahaan baru daripada menggabungkan secara spekulatif. Pengiriman lowongan identik mengembalikan record yang sudah ada.
+
 ## Logika Deteksi Age-Bias
 
 AI mengklasifikasikan hasil analisis ke dalam tiga kategori.
@@ -396,8 +400,8 @@ Endpoint daftar perusahaan menerima parameter `q`, `industry`, `city`, `page`, d
 | --- | --- | --- |
 | `GET` | `/api/v1/companies` | Menampilkan daftar perusahaan berdasarkan skor bias, kota, industri, dan pencarian nama |
 | `GET` | `/api/v1/companies/{id}` | Menampilkan detail perusahaan, riwayat lowongan, dan bukti pembatasan usia |
-| `GET` | `/api/v1/analytics/overview` | Menampilkan statistik industri, jabatan, dan rata-rata batas usia |
-| `POST` | `/api/v1/submissions/report` | Menerima teks atau screenshot lowongan untuk diproses OCR dan dikirim ke antrean analisis |
+| `GET` | `/api/v1/analytics/overview` (rencana) | Menampilkan statistik industri, jabatan, dan rata-rata batas usia |
+| `POST` | `/api/v1/submissions/report` (rencana) | Menerima laporan lowongan untuk diproses dan dikirim ke antrean analisis |
 
 ## Tantangan dan Mitigasi
 

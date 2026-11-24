@@ -23,7 +23,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
   - Implementasikan daftar perusahaan dengan pencarian dan filter.
   - Implementasikan detail perusahaan beserta lowongan dan bukti analisis.
   - Validasi input, pagination, dan respons error.
-- [ ] **Bangun ingestion dan normalisasi lowongan**
+- [x] **Bangun ingestion dan normalisasi lowongan**
   - Buat alur penerimaan lowongan dari sumber yang disetujui serta laporan pengguna.
   - Normalisasi nama perusahaan dan cegah duplikasi lowongan.
   - Simpan URL sumber dan waktu pengambilan untuk setiap lowongan.
