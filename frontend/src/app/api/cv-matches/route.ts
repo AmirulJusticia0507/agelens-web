@@ -43,7 +43,13 @@ export async function PUT(request: Request) {
     typeof payload.profile !== "string" ||
     typeof payload.job_posting_id !== "string"
   ) {
-    return NextResponse.json({ detail: "Data CV atau lowongan tidak valid." }, { status: 422 });
+    return NextResponse.json(
+      {
+        detail:
+          "Sesi CV atau ID lowongan tidak ditemukan. Muat ulang halaman dan unggah CV kembali sebelum meminta analisis AI.",
+      },
+      { status: 422 },
+    );
   }
 
   const baseUrl = (

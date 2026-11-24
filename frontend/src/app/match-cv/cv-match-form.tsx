@@ -42,6 +42,13 @@ function CvResults({
   const [assessmentErrors, setAssessmentErrors] = useState<Record<string, string>>({});
 
   async function loadAssessment(profile: "CV 1" | "CV 2", sessionId: string, jobId: string) {
+    if (!sessionId || !jobId) {
+      setAssessmentErrors((current) => ({
+        ...current,
+        [jobId || profile]: "Sesi pencocokan sudah lama atau backend belum diperbarui. Muat ulang halaman, unggah CV lagi, lalu coba kembali.",
+      }));
+      return;
+    }
     setLoadingJobs((current) => [...current, jobId]);
     setAssessmentErrors((current) => ({ ...current, [jobId]: "" }));
     try {
@@ -54,7 +61,7 @@ function CvResults({
       if (!response.ok) {
         setAssessmentErrors((current) => ({
           ...current,
-          [jobId]: responseDetail(payload) ?? "Analisis AI gagal. Coba lagi.",
+          [jobId]: responseDetail(payload) ?? `Analisis AI gagal (HTTP ${response.status}). Coba lagi.`,
         }));
         return;
       }
