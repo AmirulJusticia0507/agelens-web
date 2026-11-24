@@ -54,8 +54,8 @@ function CvResults({
     setLoadingJobs((current) => [...current, jobId]);
     setAssessmentErrors((current) => ({ ...current, [jobId]: "" }));
     try {
-      const response = await fetch("/api/cv-matches", {
-        method: "PUT",
+      const response = await fetch("/api/v1/cv-matches/assess-job", {
+        method: "POST",
         body: (() => {
           const data = new FormData();
           data.append("cv_file", cvFile);
@@ -65,15 +65,32 @@ function CvResults({
       });
       const payload: unknown = await response.json();
       if (!response.ok) {
+        const backendDetail = responseDetail(payload);
+        let message = "";
+        
+        if (response.status === 404) {
+          message = "Lowongan ini tidak ditemukan di database kami. CV Anda berhasil dibaca, namun analisis tidak dapat dilakukan karena data lowongan tidak tersedia.";
+        } else if (response.status === 503 || response.status === 502) {
+          message = "Layanan analisis AI sementara tidak tersedia. CV Anda berhasil diterima — coba lagi dalam beberapa saat.";
+        } else if (response.status === 415 || response.status === 413) {
+          message = backendDetail ?? `Analisis AI gagal (HTTP ${response.status}). CV Anda berhasil diunggah — coba lagi.`;
+        } else {
+          message = `Analisis AI gagal (HTTP ${response.status}). CV Anda berhasil diunggah — coba lagi.`;
+        }
+        
+        const finalMessage = backendDetail && backendDetail !== message 
+          ? `${message} (${backendDetail})` 
+          : message;
+        
         setAssessmentErrors((current) => ({
           ...current,
-          [jobId]: responseDetail(payload) ?? `Analisis AI gagal (HTTP ${response.status}). Coba lagi.`,
+          [jobId]: finalMessage,
         }));
         return;
       }
       setAssessments((current) => ({ ...current, [jobId]: payload as CvJobAiAssessment }));
     } catch {
-      setAssessmentErrors((current) => ({ ...current, [jobId]: "Tidak dapat menghubungi layanan AI." }));
+      setAssessmentErrors((current) => ({ ...current, [jobId]: "Tidak dapat menghubungi layanan AI. CV Anda sudah diproses di browser — pastikan koneksi internet aktif dan coba lagi." }));
     } finally {
       setLoadingJobs((current) => current.filter((id) => id !== jobId));
     }
