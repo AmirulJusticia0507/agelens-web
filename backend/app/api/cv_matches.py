@@ -91,7 +91,7 @@ async def assess_cv_job_fit(
         job = await session.get(JobPosting, job_posting_id)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail="ID lowongan tidak valid.") from exc
-    if job is None or not job.raw_metadata or job.raw_metadata.get("record_type") != "job_posting":
+    if job is None or job.company_id is None or job.source_platform == "target_company":
         raise HTTPException(status_code=404, detail="Lowongan tidak ditemukan.")
     cv_text = await _read_cv_text(cv_file)
     try:

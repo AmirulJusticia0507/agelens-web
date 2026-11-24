@@ -308,7 +308,6 @@ async def test_ai_job_assessment_accepts_uploaded_cv_and_returns_reason(
         source_url="https://example.test/jobs/fullstack",
         content_hash=uuid4().hex,
         raw_description="React, Python, PostgreSQL, Kubernetes.",
-        raw_metadata={"record_type": "job_posting"},
     )
     company.job_postings.append(job)
     session.add(company)
