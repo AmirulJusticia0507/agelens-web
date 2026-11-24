@@ -49,7 +49,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 - [x] **Bangun halaman detail dan analitik**
   - Tampilkan riwayat lowongan, sumber, tanggal pengambilan, kutipan bukti, dan statistik.
   - Bedakan hasil eksplisit, implisit, dan netral secara jelas.
-- [ ] **Tambahkan pengujian dan pemeriksaan kualitas**
+- [x] **Tambahkan pengujian dan pemeriksaan kualitas**
   - Uji alur utama API, deduplikasi, validasi hasil analisis, dan tampilan inti.
   - Jalankan pemeriksaan lint, type-check, dan test yang tersedia.
 - [ ] **Lengkapi dokumentasi operasional**
