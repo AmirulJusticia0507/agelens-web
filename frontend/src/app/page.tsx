@@ -1,24 +1,7 @@
 import Link from "next/link";
+import { fetchApi, type CompanyPage } from "@/lib/api";
 
 export const instant = false;
-
-type Company = {
-  id: string;
-  display_name: string;
-  industry: string | null;
-  city: string | null;
-  total_jobs_analyzed: number;
-  age_restricted_jobs_count: number;
-  age_bias_score: number;
-};
-
-type CompanyPage = {
-  items: Company[];
-  page: number;
-  page_size: number;
-  total: number;
-  pages: number;
-};
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -34,33 +17,6 @@ function pageHref(params: SearchParams, page: number): string {
   }
   query.set("page", String(page));
   return `/?${query.toString()}`;
-}
-
-async function loadCompanies(
-  params: URLSearchParams,
-): Promise<{ data?: CompanyPage; error?: string }> {
-  const baseUrl = (
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1"
-  ).replace(/\/+$/, "");
-
-  let response: Response;
-  try {
-    response = await fetch(`${baseUrl}/companies?${params.toString()}`, {
-      cache: "no-store",
-    });
-  } catch {
-    return {
-      error: "Tidak dapat menghubungi API. Pastikan backend berjalan, lalu muat ulang halaman.",
-    };
-  }
-  if (!response.ok) {
-    return { error: `API mengembalikan status ${response.status}. Coba lagi nanti.` };
-  }
-  try {
-    return { data: (await response.json()) as CompanyPage };
-  } catch {
-    return { error: "Respons dari API tidak dapat dibaca. Coba muat ulang halaman." };
-  }
 }
 
 function formatScore(score: number): string {
@@ -87,8 +43,8 @@ export default async function Home({
   query.set("page", String(currentPage));
   query.set("page_size", "20");
 
-  const result = await loadCompanies(query);
-  const data = result.data;
+  const result = await fetchApi<CompanyPage>(`companies?${query.toString()}`);
+  const data = "data" in result ? result.data : undefined;
   const numberFormat = new Intl.NumberFormat("id-ID");
 
   return (
@@ -105,6 +61,9 @@ export default async function Home({
             <a className="font-medium text-slate-900" href="#hasil">
               Perusahaan
             </a>
+            <Link className="text-slate-600 transition hover:text-emerald-800" href="/analytics">
+              Analitik
+            </Link>
             <a className="text-slate-600 transition hover:text-emerald-800" href="#metodologi">
               Tentang skor
             </a>
@@ -209,7 +168,7 @@ export default async function Home({
             )}
           </div>
 
-          {result.error ? (
+          {"error" in result ? (
             <div
               role="alert"
               className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-900"

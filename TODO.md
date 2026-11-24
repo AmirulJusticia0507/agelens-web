@@ -46,7 +46,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 
 - [x] **Bangun antarmuka pencarian perusahaan**
   - Tampilkan hasil pencarian, filter, pagination, dan status kosong/error.
-- [ ] **Bangun halaman detail dan analitik**
+- [x] **Bangun halaman detail dan analitik**
   - Tampilkan riwayat lowongan, sumber, tanggal pengambilan, kutipan bukti, dan statistik.
   - Bedakan hasil eksplisit, implisit, dan netral secara jelas.
 - [ ] **Tambahkan pengujian dan pemeriksaan kualitas**

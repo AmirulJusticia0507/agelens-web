@@ -214,6 +214,7 @@ async def test_get_company_includes_jobs_and_analysis(
     assert response.json()["job_postings"][0]["source_url"] == (
         "https://example.test/jobs/123"
     )
+    assert response.json()["job_postings"][0]["analysis_status"] == "pending"
 
 
 @pytest.mark.asyncio

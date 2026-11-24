@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -29,6 +30,7 @@ class JobPostingResponse(BaseModel):
     raw_description: str
     posted_date: date | None
     scraped_at: datetime
+    analysis_status: Literal["pending", "processing", "completed", "failed"]
     analysis: AgeAnalysisResponse | None
 
 
