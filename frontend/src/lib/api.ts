@@ -79,7 +79,6 @@ export type CvProfileMatch = {
   skills: string[];
   jobs_considered: number;
   companies: CvCompanyMatch[];
-  cv_session_id: string;
 };
 
 export type CvMatchResponse = {

@@ -193,7 +193,6 @@ def build_profile_match(
     label: str,
     cv_text: str,
     job_postings: Sequence[JobPosting],
-    cv_session_id: str = "",
 ) -> CvProfileMatchResponse:
     skills = extract_skills(cv_text)
     return CvProfileMatchResponse(
@@ -201,5 +200,4 @@ def build_profile_match(
         skills=skills,
         jobs_considered=len(job_postings),
         companies=rank_company_matches(skills, job_postings),
-        cv_session_id=cv_session_id,
     )

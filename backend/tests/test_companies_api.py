@@ -293,6 +293,53 @@ async def test_compare_cv_uploads_returns_separate_company_matches(
 
 
 @pytest.mark.asyncio
+async def test_ai_job_assessment_accepts_uploaded_cv_and_returns_reason(
+    api: tuple[AsyncClient, AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, session = api
+    company = Company(
+        normalized_name=unique_name("ai-assess-company"),
+        display_name="AI Assess Company",
+    )
+    job = JobPosting(
+        job_title="Senior Full Stack Developer",
+        source_platform="test",
+        source_url="https://example.test/jobs/fullstack",
+        content_hash=uuid4().hex,
+        raw_description="React, Python, PostgreSQL, Kubernetes.",
+        raw_metadata={"record_type": "job_posting"},
+    )
+    company.job_postings.append(job)
+    session.add(company)
+    await session.flush()
+    monkeypatch.setattr(cv_matches_api, "extract_cv_text", lambda _: "React and PostgreSQL experience")
+
+    class FakeAnalyzer:
+        async def assess_cv_match(self, cv_text: str, job_description: str):
+            assert cv_text == "React and PostgreSQL experience"
+            assert job_description == "React, Python, PostgreSQL, Kubernetes."
+            return cv_matches_api.CvJobAiAssessment(
+                summary="Pengalaman React dan PostgreSQL sesuai kebutuhan utama.",
+                strengths=["React", "PostgreSQL"],
+                gaps=["Kubernetes belum tercantum di CV"],
+                fit_level="moderate",
+                caveat="Ini bukan jaminan lolos seleksi.",
+            )
+
+    monkeypatch.setattr(cv_matches_api, "OpenAICompatibleAgeAnalyzer", FakeAnalyzer)
+    response = await client.post(
+        "/api/v1/cv-matches/assess-job",
+        data={"job_posting_id": str(job.id)},
+        files={"cv_file": ("cv.pdf", b"%PDF-test", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["strengths"] == ["React", "PostgreSQL"]
+    assert response.json()["gaps"] == ["Kubernetes belum tercantum di CV"]
+
+
+@pytest.mark.asyncio
 async def test_compare_cv_upload_accepts_only_required_first_cv(
     api: tuple[AsyncClient, AsyncSession],
     monkeypatch: pytest.MonkeyPatch,

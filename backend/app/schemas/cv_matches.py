@@ -27,7 +27,6 @@ class CvProfileMatchResponse(BaseModel):
     skills: list[str]
     jobs_considered: int = Field(ge=0)
     companies: list[CvCompanyMatchResponse]
-    cv_session_id: str
 
 
 class CvMatchResponse(BaseModel):

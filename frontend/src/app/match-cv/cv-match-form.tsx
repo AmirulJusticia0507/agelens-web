@@ -34,18 +34,20 @@ function formatPercentage(value: number): string {
 
 function CvResults({
   result,
+  cvFiles,
 }: {
   result: CvMatchResponse;
+  cvFiles: Record<"CV 1" | "CV 2", File | null>;
 }) {
   const [assessments, setAssessments] = useState<Record<string, CvJobAiAssessment>>({});
   const [loadingJobs, setLoadingJobs] = useState<string[]>([]);
   const [assessmentErrors, setAssessmentErrors] = useState<Record<string, string>>({});
 
-  async function loadAssessment(profile: "CV 1" | "CV 2", sessionId: string, jobId: string) {
-    if (!sessionId || !jobId) {
+  async function loadAssessment(cvFile: File | null, jobId: string) {
+    if (!cvFile || !jobId) {
       setAssessmentErrors((current) => ({
         ...current,
-        [jobId || profile]: "Sesi pencocokan sudah lama atau backend belum diperbarui. Muat ulang halaman, unggah CV lagi, lalu coba kembali.",
+        [jobId || "cv"]: "File CV atau ID lowongan tidak tersedia. Unggah ulang CV lalu coba kembali.",
       }));
       return;
     }
@@ -54,8 +56,12 @@ function CvResults({
     try {
       const response = await fetch("/api/cv-matches", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cv_session_id: sessionId, profile, job_posting_id: jobId }),
+        body: (() => {
+          const data = new FormData();
+          data.append("cv_file", cvFile);
+          data.append("job_posting_id", jobId);
+          return data;
+        })(),
       });
       const payload: unknown = await response.json();
       if (!response.ok) {
@@ -173,7 +179,7 @@ function CvResults({
                               <button
                                 type="button"
                                 disabled={loadingJobs.includes(job.job_posting_id)}
-                                onClick={() => void loadAssessment(profile.label, profile.cv_session_id, job.job_posting_id)}
+                                onClick={() => void loadAssessment(cvFiles[profile.label], job.job_posting_id)}
                                 className="mt-3 rounded-lg border border-sky-800 px-3 py-2 text-sm font-medium text-sky-900 disabled:opacity-60"
                               >
                                 {loadingJobs.includes(job.job_posting_id) ? "Menganalisis…" : "Analisis AI lebih detail"}
@@ -220,6 +226,7 @@ export default function CvMatchForm() {
   const [result, setResult] = useState<CvMatchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cvFiles, setCvFiles] = useState<Record<"CV 1" | "CV 2", File | null>>({ "CV 1": null, "CV 2": null });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -269,6 +276,10 @@ export default function CvMatchForm() {
         return;
       }
       const matchResult = payload as CvMatchResponse;
+      setCvFiles({
+        "CV 1": cvA,
+        "CV 2": cvB instanceof File && cvB.size > 0 ? cvB : null,
+      });
       setResult(matchResult);
     } catch {
       setError("Tidak dapat menghubungi layanan pencocokan. Coba lagi.");
@@ -320,7 +331,7 @@ export default function CvMatchForm() {
           {isSubmitting ? "Menganalisis CV..." : "Bandingkan kecocokan"}
         </button>
       </form>
-      {result && <CvResults result={result} />}
+      {result && <CvResults result={result} cvFiles={cvFiles} />}
     </>
   );
 }

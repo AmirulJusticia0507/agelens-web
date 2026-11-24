@@ -32,22 +32,17 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  let payload: { cv_session_id?: unknown; profile?: unknown; job_posting_id?: unknown };
+  let formData: FormData;
   try {
-    payload = await request.json();
+    formData = await request.formData();
   } catch {
-    return NextResponse.json({ detail: "Permintaan analisis tidak valid." }, { status: 400 });
+    return NextResponse.json({ detail: "Form analisis tidak valid." }, { status: 400 });
   }
-  if (
-    typeof payload.cv_session_id !== "string" ||
-    typeof payload.profile !== "string" ||
-    typeof payload.job_posting_id !== "string"
-  ) {
+  const cvFile = formData.get("cv_file");
+  const jobPostingId = formData.get("job_posting_id");
+  if (!(cvFile instanceof File) || typeof jobPostingId !== "string" || !jobPostingId) {
     return NextResponse.json(
-      {
-        detail:
-          "Sesi CV atau ID lowongan tidak ditemukan. Muat ulang halaman dan unggah CV kembali sebelum meminta analisis AI.",
-      },
+      { detail: "File CV atau lowongan tidak ditemukan. Unggah CV kembali sebelum analisis AI." },
       { status: 422 },
     );
   }
@@ -58,8 +53,7 @@ export async function PUT(request: Request) {
   try {
     const response = await fetch(`${baseUrl}/cv-matches/assess-job`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: formData,
       cache: "no-store",
     });
     return NextResponse.json(await response.json(), { status: response.status });
