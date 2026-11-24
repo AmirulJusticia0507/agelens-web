@@ -8,7 +8,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
   - Tetapkan alur pengguna inti dan batas MVP.
   - Putuskan pilihan worker queue, penyedia/model LLM, dan strategi konfigurasi berdasarkan kebutuhan serta stack repository.
   - Dokumentasikan keputusan penting di README.
-- [ ] **Siapkan fondasi aplikasi**
+- [x] **Siapkan fondasi aplikasi**
   - Siapkan backend FastAPI dan frontend Next.js sesuai struktur proyek.
   - Tambahkan konfigurasi lingkungan, contoh konfigurasi tanpa rahasia, serta instruksi pengembangan lokal.
   - Pastikan pemeriksaan format, lint, dan test dasar dapat dijalankan.

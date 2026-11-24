@@ -8,6 +8,7 @@
 - [Tujuan Sistem](#tujuan-sistem)
 - [Scope MVP dan Keputusan Teknis](#scope-mvp-dan-keputusan-teknis)
 - [Tech Stack](#tech-stack)
+- [Menjalankan Secara Lokal](#menjalankan-secara-lokal)
 - [System Design](#system-design)
 - [Arsitektur Data Pipeline](#arsitektur-data-pipeline)
 - [Logika Deteksi Age-Bias](#logika-deteksi-age-bias)
@@ -74,6 +75,46 @@ Untuk menjaga MVP tetap terukur, scraping terjadwal, unggahan gambar/OCR, dan de
 | Database | PostgreSQL 17 dengan JSONB dan pgvector | Menyimpan data relasional, payload mentah, serta embedding teks |
 | Frontend | Next.js App Router, TypeScript, Tailwind CSS | Mendukung SEO, SSR, dashboard pencarian, dan visualisasi data |
 | Message broker | Redis | Memisahkan antrean scraping dan pemanggilan API LLM dari server utama |
+
+## Menjalankan Secara Lokal
+
+### Prasyarat
+
+- Python 3.12 atau lebih baru
+- Node.js 20.9 atau lebih baru
+- PostgreSQL dan Redis diperlukan saat fitur database dan antrean digunakan
+
+### Backend
+
+Dari root repository, jalankan di PowerShell:
+
+```powershell
+python -m venv .venv
+Set-Location backend
+..\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir . --reload
+```
+
+API tersedia di `http://localhost:8000`; dokumentasi interaktif ada di `http://localhost:8000/docs`. Pemeriksaan health: `GET /api/v1/health`.
+
+Untuk menjalankan test backend dari direktori `backend`:
+
+```powershell
+..\.venv\Scripts\python.exe -m pytest
+```
+
+### Frontend
+
+Di terminal lain dari root repository:
+
+```powershell
+Set-Location frontend
+Copy-Item .env.example .env.local
+npm install
+npm run dev
+```
+
+Frontend tersedia di `http://localhost:3000`. Salin `.env.example` di root menjadi `.env` untuk konfigurasi backend lokal setelah layanan database, Redis, dan analisis dikembangkan.
 
 ## System Design
 
