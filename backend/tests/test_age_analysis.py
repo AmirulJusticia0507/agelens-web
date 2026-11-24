@@ -101,6 +101,7 @@ async def test_analyzer_surfaces_provider_status_without_response_body() -> None
 
     assert "sensitive provider response" not in str(error.value)
     assert "test-key" not in str(error.value)
+    assert error.value.retryable is False
 
 
 @pytest.mark.asyncio

@@ -21,7 +21,9 @@ class AnalysisConfigurationError(RuntimeError):
 
 
 class AnalysisProviderError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 class _ChatMessage(BaseModel):
@@ -87,13 +89,19 @@ class OpenAICompatibleAgeAnalyzer:
             )
             response.raise_for_status()
         except httpx.TimeoutException as exc:
-            raise AnalysisProviderError("LLM provider request timed out") from exc
-        except httpx.HTTPStatusError as exc:
             raise AnalysisProviderError(
-                f"LLM provider returned HTTP {exc.response.status_code}"
+                "LLM provider request timed out", retryable=True
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            raise AnalysisProviderError(
+                f"LLM provider returned HTTP {status_code}",
+                retryable=status_code == 429 or status_code >= 500,
             ) from exc
         except httpx.RequestError as exc:
-            raise AnalysisProviderError("LLM provider request failed") from exc
+            raise AnalysisProviderError(
+                "LLM provider request failed", retryable=True
+            ) from exc
         finally:
             if self._client is None:
                 await request_client.aclose()
@@ -103,5 +111,6 @@ class OpenAICompatibleAgeAnalyzer:
             return AgeAnalysisResult.model_validate_json(completion.choices[0].message.content)
         except ValueError as exc:
             raise AnalysisProviderError(
-                "LLM provider returned an invalid structured analysis"
+                "LLM provider returned an invalid structured analysis",
+                retryable=True,
             ) from exc

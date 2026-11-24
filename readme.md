@@ -136,6 +136,22 @@ Set-Location backend
 
 API tersedia di `http://localhost:8000`; dokumentasi interaktif ada di `http://localhost:8000/docs`. Pemeriksaan health: `GET /api/v1/health`.
 
+### Antrean Analisis
+
+Analisis lowongan dijalankan oleh worker ARQ menggunakan Redis. Pastikan `REDIS_URL` di `.env` menunjuk ke Redis Compose (default `redis://localhost:6380/0`), lalu nyalakan layanan:
+
+```powershell
+docker compose up -d db redis
+```
+
+Jalankan worker dari direktori `backend` di terminal terpisah:
+
+```powershell
+..\.venv\Scripts\arq.exe app.worker.WorkerSettings
+```
+
+Lowongan baru masuk antrean dengan status `pending`; worker memperbarui status menjadi `processing`, lalu `completed` atau `failed`. Kegagalan sementara dicoba ulang secara terbatas, dan ID job deterministik mencegah pengiriman job analisis ganda untuk lowongan yang sama.
+
 Untuk menjalankan test backend dari direktori `backend`:
 
 ```powershell

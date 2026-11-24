@@ -32,7 +32,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
   - Klasifikasikan lowongan sebagai `EXPLICIT`, `IMPLICIT`, atau `NONE`.
   - Simpan rentang usia, kutipan bukti, alasan, confidence score, dan model yang digunakan.
   - Tangani respons model yang gagal atau tidak valid secara eksplisit.
-- [ ] **Tambahkan pemrosesan antrean**
+- [x] **Tambahkan pemrosesan antrean**
   - Proses ingestion dan analisis secara asynchronous menggunakan worker dan broker yang dipilih.
   - Tangani retry, status pekerjaan, dan kegagalan agar tidak menghasilkan data ganda.
 - [ ] **Bangun endpoint laporan pengguna**
