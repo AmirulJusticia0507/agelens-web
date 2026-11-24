@@ -9,6 +9,7 @@
 - [Scope MVP dan Keputusan Teknis](#scope-mvp-dan-keputusan-teknis)
 - [Tech Stack](#tech-stack)
 - [Menjalankan Secara Lokal](#menjalankan-secara-lokal)
+- [Menyiapkan Deployment](#menyiapkan-deployment)
 - [System Design](#system-design)
 - [Arsitektur Data Pipeline](#arsitektur-data-pipeline)
 - [Logika Deteksi Age-Bias](#logika-deteksi-age-bias)
@@ -55,7 +56,7 @@ MVP berfokus pada alur yang dapat diverifikasi dari awal hingga akhir:
 3. Pengguna mencari perusahaan dan memeriksa lowongan beserta bukti sumbernya.
 4. Dashboard menampilkan ringkasan statistik dari data yang sudah dianalisis.
 
-Untuk menjaga MVP tetap terukur, scraping terjadwal, unggahan gambar/OCR, dan deployment produksi bukan bagian dari alur awal. Sumber lowongan harus tetap tercatat agar hasil dapat ditelusuri; analisis bukan penilaian hukum atau klaim definitif mengenai perusahaan.
+Untuk menjaga MVP tetap terukur, scraping terjadwal dan unggahan gambar/OCR bukan bagian dari alur awal. Sumber lowongan harus tetap tercatat agar hasil dapat ditelusuri; analisis bukan penilaian hukum atau klaim definitif mengenai perusahaan. Panduan deployment di bawah bersifat provider-agnostic; infrastruktur produksi belum diprovisikan.
 
 | Keputusan | Pilihan MVP | Alasan |
 | --- | --- | --- |
@@ -183,6 +184,30 @@ Halaman utama frontend menyediakan pencarian perusahaan berdasarkan nama, indust
 npm run lint
 npm run build
 ```
+
+## Menyiapkan Deployment
+
+Belum ada target hosting atau manifest container untuk aplikasi; `compose.yaml` hanya menjalankan PostgreSQL dan Redis untuk pengembangan lokal. Untuk deployment, sediakan layanan terpisah berikut:
+
+| Layanan | Kebutuhan |
+| --- | --- |
+| API | Python 3.12+, akses privat ke PostgreSQL dan Redis |
+| Worker analisis | Python 3.12+, akses ke PostgreSQL, Redis, dan endpoint LLM |
+| Frontend | Node.js 20.9+ untuk build Next.js dan menjalankan server web |
+| PostgreSQL | PostgreSQL 17 dengan ekstensi `pg_trgm`, `pgcrypto`, dan `vector`; aktifkan backup dan storage persisten |
+| Redis | Redis 7 yang hanya dapat diakses dari API dan worker |
+
+Sebelum rilis:
+
+1. Sediakan `DATABASE_URL`, `REDIS_URL`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, dan `LLM_TIMEOUT_SECONDS` pada environment backend/worker. Gunakan secret manager atau environment secret untuk kredensial; jangan commit `.env`, menaruh rahasia di image, log, atau variabel `NEXT_PUBLIC_*`.
+2. Set `ENVIRONMENT=production` dan arahkan URL layanan ke jaringan privat produksi. Ganti seluruh kredensial contoh lokal; jangan gunakan default pada `.env.example`.
+3. Set `NEXT_PUBLIC_API_BASE_URL` ke alamat API yang dapat diakses dari server Next.js **sebelum build frontend**. Nilai ini bukan secret dan akan dimasukkan ke bundle Next.js.
+4. Jalankan `alembic upgrade head` sebagai langkah rilis satu kali sebelum API dan worker versi baru menerima traffic. Ambil backup database sebelum migrasi.
+5. Jalankan proses API dengan `uvicorn app.main:app --app-dir .`, worker dengan `arq app.worker.WorkerSettings`, dan frontend dengan `npm start` setelah `npm ci` serta `npm run build`.
+6. Jalankan pemeriksaan pada bagian lokal sebelum rilis. Endpoint `GET /api/v1/health` hanya memeriksa bahwa API merespons; pantau koneksi database, Redis, antrean worker, dan kegagalan analisis secara terpisah.
+7. Aktifkan HTTPS, batasi ingress PostgreSQL/Redis hanya untuk layanan aplikasi, serta siapkan logging, retensi data, dan prosedur pemulihan backup sesuai kebijakan operasional.
+
+Perintah dan kebutuhan di atas adalah checklist konfigurasi, bukan bukti aplikasi sudah terdeploy. Pemilihan provider, penyediaan resource, domain, dan pipeline CI/CD tetap perlu ditentukan sebelum rilis produksi.
 
 ## System Design
 

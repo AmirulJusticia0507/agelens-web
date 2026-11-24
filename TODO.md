@@ -58,7 +58,7 @@ Daftar pekerjaan pengembangan berdasarkan rancangan pada [readme.md](./readme.md
 
 ## Rilis
 
-- [ ] **Siapkan deployment**
+- [x] **Siapkan deployment**
   - Dokumentasikan kebutuhan layanan dan konfigurasi deployment.
   - Pastikan rahasia hanya disediakan melalui environment/secret manager dan tidak masuk repository.
   - Verifikasi build dan pemeriksaan sebelum rilis.
