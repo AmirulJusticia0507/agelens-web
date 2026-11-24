@@ -100,6 +100,7 @@ async def analyze_cv_matches(
             .where(
                 JobPosting.company_id.is_not(None),
                 JobPosting.raw_metadata["record_type"].astext == "job_posting",
+                JobPosting.source_platform != "target_company",
             )
             .order_by(JobPosting.job_title.asc())
         )

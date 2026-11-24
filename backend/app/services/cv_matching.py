@@ -112,7 +112,7 @@ def rank_company_matches(
 
     candidate_skills = set(skills)
     companies: dict[UUID, CvCompanyMatchResponse] = {}
-    seen_postings: set[tuple[UUID, str]] = set()
+    seen_postings: set[str] = set()
     for posting in job_postings:
         company = posting.company
         if company is None:
@@ -126,9 +126,9 @@ def rank_company_matches(
             canonical_url = urlunsplit(
                 (parsed_url.scheme.casefold(), parsed_url.netloc.casefold(), parsed_url.path.rstrip("/"), parsed_url.query, "")
             )
-            posting_key = (company.id, canonical_url)
+            posting_key = canonical_url
         else:
-            posting_key = (company.id, f"{posting.job_title.casefold()}:{posting.content_hash}")
+            posting_key = f"{company.normalized_name}:{posting.job_title.casefold()}:{posting.content_hash}"
         if posting_key in seen_postings:
             continue
         seen_postings.add(posting_key)
