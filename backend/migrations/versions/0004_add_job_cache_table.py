@@ -38,11 +38,12 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("source_platform", "search_query_hash", name="uq_job_cache_source_query"),
     )
+    # A partial predicate using now() is rejected by PostgreSQL because now()
+    # is STABLE, not IMMUTABLE. Index all rows so TTL cleanup can use it.
     op.create_index(
         "ix_job_cache_created_at",
         "job_cache",
         ["created_at"],
-        postgresql_where=sa.text("created_at > now() - interval '1 hour'"),
     )
 
 
