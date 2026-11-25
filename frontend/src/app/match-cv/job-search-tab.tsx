@@ -26,6 +26,44 @@ export default function JobSearchTab({
   const [result, setResult] = useState<JobSearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
+
+  function useMyLocation() {
+    setLocationMessage(null);
+    if (!navigator.geolocation) {
+      setLocationMessage("Browser ini tidak mendukung geolocation.");
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const params = new URLSearchParams({ lat: String(coords.latitude), lon: String(coords.longitude) });
+          const response = await fetch(`/api/v1/location/reverse?${params}`);
+          const payload: unknown = await response.json();
+          if (!response.ok || typeof payload !== "object" || payload === null || !("location" in payload)) {
+            setLocationMessage("Nama kota tidak ditemukan. Silakan isi lokasi secara manual.");
+            return;
+          }
+          const locationInput = document.getElementById("location");
+          if (locationInput instanceof HTMLInputElement) {
+            locationInput.value = String(payload.location);
+            setLocationMessage(`Lokasi diisi: ${String(payload.location)}.`);
+          }
+        } catch {
+          setLocationMessage("Tidak dapat mencari nama kota. Silakan isi lokasi secara manual.");
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      () => {
+        setLocationMessage("Izin lokasi ditolak atau lokasi tidak tersedia.");
+        setIsLocating(false);
+      },
+      { timeout: 10000, maximumAge: 300000 },
+    );
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -125,21 +163,23 @@ export default function JobSearchTab({
             <label htmlFor="location" className="mb-2 block text-sm font-semibold">
               Lokasi (opsional)
             </label>
-            <select
+            <input
               id="location"
               name="location"
+              type="text"
+              placeholder="cth: Jakarta atau Yogyakarta"
               disabled={disabled || isSubmitting}
-              className="block w-full rounded-xl border border-white/20 bg-white p-3 text-sm text-slate-900 disabled:opacity-60"
+              className="block w-full rounded-xl border border-white/20 bg-white p-3 text-sm text-slate-900 placeholder-slate-400 disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={useMyLocation}
+              disabled={disabled || isSubmitting || isLocating}
+              className="mt-2 rounded-lg border border-white/30 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-60"
             >
-              <option value="">Pilih lokasi...</option>
-              <option value="Jakarta">Jakarta</option>
-              <option value="Surabaya">Surabaya</option>
-              <option value="Bandung">Bandung</option>
-              <option value="Yogyakarta">Yogyakarta</option>
-              <option value="Bali">Bali</option>
-              <option value="Medan">Medan</option>
-              <option value="Makassar">Makassar</option>
-            </select>
+              {isLocating ? "Mencari lokasi..." : "Gunakan lokasi saya"}
+            </button>
+            {locationMessage && <p role="status" className="mt-2 text-xs text-emerald-50">{locationMessage}</p>}
           </div>
 
           <div>
@@ -223,6 +263,9 @@ export default function JobSearchTab({
         <p className="mt-4 text-sm leading-6 text-emerald-50/90">
           Cari lowongan dari Indeed, LinkedIn, dan remote.io. Filter bersifat opsional dan dapat
           diubah sesuai preferensi Anda.
+        </p>
+        <p className="mt-2 text-xs text-emerald-50/70">
+          Pencarian nama kota memakai OpenStreetMap Nominatim. Koordinat hanya digunakan untuk mencari kota dan tidak disimpan. © OpenStreetMap contributors.
         </p>
 
         {error && (
