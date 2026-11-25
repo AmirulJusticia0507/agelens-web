@@ -145,6 +145,106 @@ class IndeedFetcher(JobFetcher):
 
 
 
+class LinkedInFetcher(JobFetcher):
+    """Fetches jobs from LinkedIn public job search.
+
+    LinkedIn actively blocks automated requests. This fetcher attempts a single
+    public search request and degrades gracefully (returns an empty list) when
+    access is denied or the response cannot be parsed.
+    """
+
+    async def fetch(self, filters: JobSearchFilters) -> list[FetchedJob]:
+        """Fetch jobs from LinkedIn public search page."""
+        try:
+            query_params = {
+                "keywords": filters.keywords or "software engineer",
+                "location": filters.location or "",
+            }
+            query_str = "&".join(f"{k}={v}" for k, v in query_params.items() if v)
+            url = f"https://www.linkedin.com/jobs/search?{query_str}"
+
+            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                response = await client.get(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    },
+                )
+                if response.status_code in (403, 429):
+                    logger.warning(
+                        f"LinkedIn fetcher blocked with status {response.status_code}; "
+                        "returning no jobs"
+                    )
+                    return []
+                response.raise_for_status()
+
+            soup = BeautifulSoup(response.content, "html.parser", from_encoding=response.encoding)
+            jobs = []
+
+            job_cards = soup.find_all("div", class_="base-card")
+            if not job_cards:
+                logger.warning(
+                    "LinkedIn: No job cards found with selector 'div.base-card'; "
+                    "site structure may have changed or access was restricted"
+                )
+                return []
+
+            for card in job_cards[:15]:
+                try:
+                    job_link = card.find("a", class_="base-card__full-link")
+                    if not job_link:
+                        continue
+
+                    job_title = job_link.get_text(strip=True)
+                    job_url = job_link.get("href", "")
+                    if not job_url.startswith("http"):
+                        job_url = f"https://www.linkedin.com{job_url}"
+
+                    company_elem = card.find("h4", class_="base-search-card__subtitle")
+                    company_name = (
+                        company_elem.get_text(strip=True) if company_elem else "Unknown"
+                    )
+
+                    description_elem = card.find("p", class_="job-search-card__snippet")
+                    description = (
+                        description_elem.get_text(strip=True) if description_elem else job_title
+                    )
+
+                    jobs.append(
+                        FetchedJob(
+                            job_title=job_title,
+                            company_name=company_name,
+                            description=description,
+                            url=job_url,
+                            source_platform="linkedin",
+                        )
+                    )
+                except (AttributeError, IndexError):
+                    continue
+
+            logger.info(f"LinkedIn fetcher retrieved {len(jobs)} jobs from {len(job_cards)} cards")
+            return jobs
+
+        except TimeoutError:
+            logger.warning("LinkedIn fetcher timed out")
+            return []
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (403, 429):
+                logger.warning(
+                    f"LinkedIn fetcher blocked with status {e.response.status_code}; "
+                    "returning no jobs"
+                )
+            else:
+                logger.warning(f"LinkedIn fetcher HTTP error: {e}")
+            return []
+        except httpx.HTTPError as e:
+            logger.warning(f"LinkedIn fetcher HTTP error: {e}")
+            return []
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"LinkedIn fetcher error: {e}")
+            return []
+
+
 class RemoteIoFetcher(JobFetcher):
     """Fetches jobs from remote.io."""
 

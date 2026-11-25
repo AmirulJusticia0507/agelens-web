@@ -58,10 +58,10 @@ def client():
 
 def test_search_and_analyze_endpoint_exists(client):
     """Test that the search-and-analyze endpoint exists."""
-    # We can't POST without a file, but we can verify the route is registered
-    # by checking the app's routes
-    routes = [route.path for route in app.routes]
-    assert any("/cv-matches" in route and "search-and-analyze" in str(app.routes) for route in routes)
+    # Included routers are not guaranteed to expose ``path``; the OpenAPI
+    # schema is the stable source of truth for registered route paths.
+    paths = app.openapi()["paths"]
+    assert "/api/v1/cv-matches/search-and-analyze" in paths
 
 
 @pytest.mark.asyncio

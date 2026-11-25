@@ -132,6 +132,7 @@ export type JobSearchResponse = {
   cv_skills: string[];
   results: JobSearchResult[];
   search_duration_ms: number;
+  warnings?: string[] | null;
 };
 
 export type ApiResult<T> =
