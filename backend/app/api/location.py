@@ -39,13 +39,21 @@ async def reverse_geocode(
                 response.raise_for_status()
                 data = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            raise HTTPException(status_code=502, detail="Layanan pencarian lokasi tidak tersedia.") from exc
+            raise HTTPException(
+                status_code=502, detail="Layanan pencarian lokasi tidak tersedia."
+            ) from exc
         finally:
             _last_request_at = monotonic()
 
         address = data.get("address", {})
         city = next(
-            (address[field] for field in ("city", "town", "village", "municipality", "county", "state") if address.get(field)),
+            (
+                address[field]
+                for field in (
+                    "city", "town", "village", "municipality", "county", "state"
+                )
+                if address.get(field)
+            ),
             None,
         )
         if not city:
