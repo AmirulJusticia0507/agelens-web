@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 
 import type { CvJobAiAssessment, CvMatchResponse } from "@/lib/api";
+import JobSearchTab from "./job-search-tab";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
@@ -240,9 +241,11 @@ function CvResults({
 }
 
 export default function CvMatchForm() {
+  const [activeTab, setActiveTab] = useState<"existing" | "search">("existing");
   const [result, setResult] = useState<CvMatchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sharedCvFile, setSharedCvFile] = useState<File | null>(null);
   const [cvFiles, setCvFiles] = useState<Record<"CV 1" | "CV 2", File | null>>({ "CV 1": null, "CV 2": null });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -251,9 +254,9 @@ export default function CvMatchForm() {
     setResult(null);
 
     const formData = new FormData(event.currentTarget);
-    const cvA = formData.get("cv_a");
+    const cvA = sharedCvFile;
     const cvB = formData.get("cv_b");
-    if (!(cvA instanceof File) || cvA.size === 0) {
+    if (!cvA) {
       setError("Pilih file CV pertama sebelum memulai pencocokan.");
       return;
     }
@@ -307,48 +310,115 @@ export default function CvMatchForm() {
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-3xl bg-[#123d33] p-5 text-white shadow-sm sm:p-7"
-      >
-        <div className="grid gap-5 md:grid-cols-2">
-          {[
-            { name: "cv_a", label: "CV pertama (wajib)", required: true },
-            { name: "cv_b", label: "CV kedua (opsional)", required: false },
-          ].map((field) => (
-            <div key={field.name}>
-              <label htmlFor={field.name} className="mb-2 block text-sm font-semibold">
-                {field.label}
-              </label>
-              <input
-                id={field.name}
-                name={field.name}
-                type="file"
-                accept="application/pdf,.pdf"
-                required={field.required}
-                className="block w-full rounded-xl border border-white/20 bg-white p-3 text-sm text-slate-900 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-emerald-900"
-              />
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-sm leading-6 text-emerald-50/90">
-          Unggah CV pertama; CV kedua opsional. PDF harus berisi teks yang dapat dipilih, maksimal
-          8 MB dan 30 halaman per file. PDF hasil scan belum didukung.
-        </p>
-        {error && (
-          <p role="alert" className="mt-4 rounded-xl bg-rose-100 p-3 text-sm text-rose-900">
-            {error}
+      {/* Shared CV Upload Section */}
+      <section className="rounded-3xl bg-[#123d33] p-5 text-white shadow-sm sm:p-7">
+        <div className="mb-6">
+          <label htmlFor="cv_shared" className="mb-2 block text-sm font-semibold">
+            File CV Anda (digunakan untuk kedua fitur)
+          </label>
+          <input
+            id="cv_shared"
+            type="file"
+            accept="application/pdf,.pdf"
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0] || null;
+              setSharedCvFile(file);
+              if (activeTab === "existing") {
+                setResult(null);
+                setError(null);
+              }
+            }}
+            className="block w-full rounded-xl border border-white/20 bg-white p-3 text-sm text-slate-900 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-emerald-900"
+          />
+          <p className="mt-3 text-sm leading-6 text-emerald-50/90">
+            PDF harus berisi teks yang dapat dipilih, maksimal 8 MB dan 30 halaman. PDF hasil
+            scan belum didukung.
           </p>
-        )}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-5 rounded-xl bg-[#c4f06b] px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-[#d3fa87] disabled:cursor-wait disabled:opacity-70"
-        >
-          {isSubmitting ? "Menganalisis CV..." : "Bandingkan kecocokan"}
-        </button>
-      </form>
-      {result && <CvResults result={result} cvFiles={cvFiles} />}
+          {sharedCvFile && (
+            <p className="mt-2 text-sm text-emerald-100">
+              File dipilih: <span className="font-semibold">{sharedCvFile.name}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex gap-2 border-b border-white/20">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("existing");
+              setResult(null);
+              setError(null);
+            }}
+            className={`px-4 py-3 text-sm font-semibold transition ${
+              activeTab === "existing"
+                ? "border-b-2 border-[#c4f06b] text-[#c4f06b]"
+                : "text-emerald-50 hover:text-white"
+            }`}
+          >
+            Cocokkan dengan lowongan tersimpan
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("search");
+              setResult(null);
+              setError(null);
+            }}
+            className={`px-4 py-3 text-sm font-semibold transition ${
+              activeTab === "search"
+                ? "border-b-2 border-[#c4f06b] text-[#c4f06b]"
+                : "text-emerald-50 hover:text-white"
+            }`}
+          >
+            Cari dari berbagai sumber
+          </button>
+        </div>
+      </section>
+
+      {/* Tab 1: Existing Stored Jobs */}
+      {activeTab === "existing" && (
+        <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+          <div className="rounded-3xl bg-[#123d33] p-5 text-white shadow-sm sm:p-7">
+            <div className="grid gap-5 md:grid-cols-1">
+              <div>
+                <label htmlFor="cv_b" className="mb-2 block text-sm font-semibold">
+                  CV kedua untuk dibandingkan (opsional)
+                </label>
+                <input
+                  id="cv_b"
+                  name="cv_b"
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="block w-full rounded-xl border border-white/20 bg-white p-3 text-sm text-slate-900 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-emerald-900"
+                />
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-emerald-50/90">
+              Unggah CV kedua jika ingin membandingkan dengan CV pertama yang sudah diunggah di
+              atas.
+            </p>
+            {error && (
+              <p role="alert" className="mt-4 rounded-xl bg-rose-100 p-3 text-sm text-rose-900">
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={isSubmitting || !sharedCvFile}
+              className="mt-5 rounded-xl bg-[#c4f06b] px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-[#d3fa87] disabled:cursor-wait disabled:opacity-70"
+            >
+              {isSubmitting ? "Menganalisis CV..." : "Bandingkan kecocokan"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Tab 2: Search from Multiple Sources */}
+      {activeTab === "search" && <JobSearchTab cvFile={sharedCvFile} />}
+
+      {/* Results */}
+      {activeTab === "existing" && result && <CvResults result={result} cvFiles={cvFiles} />}
     </>
   );
 }

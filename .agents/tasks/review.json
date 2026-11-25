@@ -1,0 +1,38 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "issue": "LinkedIn scraper never succeeds",
+      "action": "LinkedIn actively blocks automated requests. This scraper will consistently return empty results, wasting 2 seconds per search. Either remove the LinkedIn fetcher or document its limitation in the endpoint response and don't invoke it."
+    },
+    {
+      "issue": "HTML selectors fragile on structure changes",
+      "action": "Indeed, LinkedIn, and remote.io HTML structures are undocumented and unstable. When class names or card structures change, selectors will silently fail to extract jobs. Add structured logging to detect when selectors fail (e.g., 0 cards matched when expected >0), or consider switching to a service-based API instead of scraping."
+    },
+    {
+      "issue": "Keyword scoring includes false positives",
+      "action": "Substring matching will match partial words (e.g., 'java' matching 'javascript'). Add word-boundary normalization or use a tokenized approach. Test keyword matching against real job descriptions to verify accuracy."
+    },
+    {
+      "issue": "Timeout budgets not isolated",
+      "action": "The 5-second budget is enforced by HTTP timeout, not the code. If fetching takes 4s and LLM times out at 3s, total exceeds 5s. Track elapsed time and reduce LLM timeout accordingly, or document that the 5s SLA is best-effort."
+    },
+    {
+      "issue": "Remote.io API response schema assumed",
+      "action": "The code assumes `GET /api/jobs` returns `{\"jobs\": [...]}` or a list. Validate against actual API or add defensive parsing with specific error logging for schema mismatches."
+    },
+    {
+      "issue": "BeautifulSoup parsing without encoding validation",
+      "action": "HTML response encoding is not explicitly set. If a site returns non-UTF-8, parsing may fail silently. Set `encoding=response.encoding` or add explicit UTF-8 validation."
+    },
+    {
+      "issue": "LLM error indexing is fragile",
+      "action": "The loop assumes `llm_results[i]` maps 1:1 with top jobs. While `asyncio.gather(..., return_exceptions=True)` maintains order, add an assertion or comment explaining the invariant to prevent future index mismatches."
+    },
+    {
+      "issue": "Warnings array may hide critical issues",
+      "action": "If BeautifulSoup selectors fail silently (0 jobs extracted from a source), no warning is issued. The user won't know why they got fewer results. Add structured logging for selector failures or emit a warning when a fetcher returns 0 jobs unexpectedly."
+    }
+  ],
+  "reviewDoc": "c:\\laragon\\www\\agelens-web\\.agents\\tasks\\job-search-review.md"
+}

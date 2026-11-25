@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None
     llm_model: str | None = None
     llm_timeout_seconds: float = 30
+    job_search_timeout_seconds: float = 5.0
+    job_search_per_source_timeout_seconds: float = 2.0
+    job_search_llm_timeout_seconds: float = 3.0
+    job_search_cache_ttl_seconds: int = 3600
+    job_search_max_results: int = 10
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
