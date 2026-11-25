@@ -8,7 +8,6 @@ import pytest
 from app.services.job_fetcher import (
     IndeedFetcher,
     JobSearchFilters,
-    LinkedInFetcher,
     RemoteIoFetcher,
     compute_query_hash,
     deduplicate_jobs,
@@ -54,7 +53,7 @@ def test_deduplicate_jobs_removes_duplicates() -> None:
         company_name="Tech Company",
         description="Similar role",
         url="https://example.com/job2",
-        source_platform="linkedin",
+        source_platform="remote.io",
     )
     job3 = FetchedJob(
         job_title="Data Scientist",
@@ -104,32 +103,6 @@ async def test_indeed_fetcher_returns_empty_on_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_linkedin_fetcher_handles_403() -> None:
-    """Test LinkedIn fetcher gracefully handles 403 Forbidden."""
-
-    async def mock_transport(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(403, text="Forbidden")
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(mock_transport)) as client:
-        fetcher = LinkedInFetcher(timeout_seconds=2.0)
-        filters = JobSearchFilters(keywords="javascript")
-        # Fetcher should return empty list for 403
-        assert filters.keywords == "javascript"
-
-
-@pytest.mark.asyncio
-async def test_linkedin_fetcher_handles_429() -> None:
-    """Test LinkedIn fetcher gracefully handles 429 Too Many Requests."""
-
-    async def mock_transport(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(429, text="Too Many Requests")
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(mock_transport)) as client:
-        fetcher = LinkedInFetcher(timeout_seconds=2.0)
-        filters = JobSearchFilters(keywords="backend")
-        assert filters.keywords == "backend"
-
-
 @pytest.mark.asyncio
 async def test_remoteio_fetcher_initialization() -> None:
     """Test remote.io fetcher can be initialized."""

@@ -8,6 +8,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date
+from urllib.parse import urlencode
 
 import httpx
 from bs4 import BeautifulSoup
@@ -243,6 +244,113 @@ class LinkedInFetcher(JobFetcher):
         except Exception as e:  # noqa: BLE001
             logger.warning(f"LinkedIn fetcher error: {e}")
             return []
+
+
+class JsonLdJobBoardFetcher(JobFetcher):
+    """Fetch public job listings from a board using its search page and JobPosting JSON-LD."""
+
+    platform: str
+    search_url: str
+
+    def __init__(
+        self, platform: str, search_url: str, timeout_seconds: float = 2.0,
+        query_prefix: str = "",
+    ):
+        super().__init__(timeout_seconds)
+        self.platform = platform
+        self.search_url = search_url
+        self.query_prefix = query_prefix
+
+    async def fetch(self, filters: JobSearchFilters) -> list[FetchedJob]:
+        query = " ".join(
+            part for part in (self.query_prefix, filters.keywords, filters.location) if part
+        )
+        url = f"{self.search_url}?{urlencode({'q': query})}"
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                response = await client.get(
+                    url,
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; AgeLens/1.0)"},
+                )
+                response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            jobs: list[FetchedJob] = []
+            for script in soup.find_all("script", type="application/ld+json"):
+                try:
+                    payload = json.loads(script.string or script.get_text())
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                for item in self._job_postings(payload):
+                    title = item.get("title")
+                    if not title:
+                        continue
+                    company = item.get("hiringOrganization") or {}
+                    if isinstance(company, str):
+                        company_name = company
+                    else:
+                        company_name = company.get("name", "Unknown")
+                    location = item.get("jobLocation") or {}
+                    if isinstance(location, list):
+                        location = location[0] if location else {}
+                    description = BeautifulSoup(
+                        item.get("description", ""), "html.parser"
+                    ).get_text(" ", strip=True)
+                    jobs.append(FetchedJob(
+                        job_title=title,
+                        company_name=company_name,
+                        description=description or title,
+                        url=item.get("url", response.url),
+                        source_platform=self.platform,
+                    ))
+                    if len(jobs) >= 15:
+                        return jobs
+            return jobs
+        except (httpx.HTTPError, asyncio.TimeoutError, ValueError) as exc:
+            logger.info("%s fetch unavailable: %s", self.platform, exc)
+            return []
+
+    @classmethod
+    def _job_postings(cls, payload):
+        if isinstance(payload, list):
+            for item in payload:
+                yield from cls._job_postings(item)
+        elif isinstance(payload, dict):
+            kind = payload.get("@type", "")
+            if kind == "JobPosting" or isinstance(kind, list) and "JobPosting" in kind:
+                yield payload
+            for item in payload.get("@graph", []):
+                yield from cls._job_postings(item)
+
+
+class GoogleJobsFetcher(JsonLdJobBoardFetcher):
+    def __init__(self, timeout_seconds: float = 2.0):
+        super().__init__("google", "https://www.google.com/search", timeout_seconds, "jobs")
+
+
+class JobStreetFetcher(JsonLdJobBoardFetcher):
+    def __init__(self, timeout_seconds: float = 2.0):
+        super().__init__("jobstreet", "https://id.jobstreet.com/id/job-search", timeout_seconds)
+
+
+class GlassdoorFetcher(JsonLdJobBoardFetcher):
+    def __init__(self, timeout_seconds: float = 2.0):
+        super().__init__("glassdoor", "https://www.glassdoor.com/Job/jobs.htm", timeout_seconds)
+
+
+class LokerJogjaFetcher(JsonLdJobBoardFetcher):
+    def __init__(self, timeout_seconds: float = 2.0):
+        super().__init__(
+            "loker jogja", "https://www.google.com/search", timeout_seconds,
+            "lowongan kerja site:lokerjogja.id OR site:jogjalowker.co.id",
+        )
+
+
+class LokerJakartaFetcher(JsonLdJobBoardFetcher):
+    def __init__(self, timeout_seconds: float = 2.0):
+        super().__init__(
+            "loker jakarta", "https://www.google.com/search", timeout_seconds,
+            "lowongan kerja site:lokernas.com OR site:karir.com",
+        )
 
 
 class RemoteIoFetcher(JobFetcher):

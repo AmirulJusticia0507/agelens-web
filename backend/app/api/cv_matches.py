@@ -22,7 +22,13 @@ from app.services.age_analysis import (
 )
 from app.services.cv_matching import CvPdfError, build_profile_match, extract_cv_text, extract_skills
 from app.services.job_fetcher import (
+    GlassdoorFetcher,
+    GoogleJobsFetcher,
     IndeedFetcher,
+    JobStreetFetcher,
+    LinkedInFetcher,
+    LokerJakartaFetcher,
+    LokerJogjaFetcher,
     RemoteIoFetcher,
     compute_query_hash,
     deduplicate_jobs,
@@ -133,7 +139,8 @@ async def search_and_analyze_cv_jobs(
     """
     Search for jobs and analyze CV fit.
     
-    - Fetches jobs from multiple sources (Indeed, LinkedIn, remote.io)
+    - Fetches jobs from Google, Indeed, JobStreet, LinkedIn, Glassdoor,
+      remote.io, and local Jogja/Jakarta job listings
     - Scores jobs based on keyword matching with CV skills
     - Returns top 10 jobs with AI assessments
     
@@ -167,20 +174,21 @@ async def search_and_analyze_cv_jobs(
 
         # Fetch jobs from all sources concurrently
         try:
-            fetcher_indeed = IndeedFetcher(timeout_seconds=settings.job_search_per_source_timeout_seconds)
-            fetcher_remoteio = RemoteIoFetcher(timeout_seconds=settings.job_search_per_source_timeout_seconds)
-
+            timeout = settings.job_search_per_source_timeout_seconds
+            fetchers = [
+                GoogleJobsFetcher(timeout), IndeedFetcher(timeout), JobStreetFetcher(timeout),
+                LinkedInFetcher(timeout), GlassdoorFetcher(timeout), RemoteIoFetcher(timeout),
+                LokerJogjaFetcher(timeout), LokerJakartaFetcher(timeout),
+            ]
             results = await asyncio.gather(
-                fetcher_indeed.fetch(filters),
-                fetcher_remoteio.fetch(filters),
+                *(fetcher.fetch(filters) for fetcher in fetchers),
                 return_exceptions=True,
             )
 
             all_jobs = []
-            source_names = ["Indeed", "remote.io"]
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
-                    source_name = source_names[i]
+                    source_name = getattr(fetchers[i], "platform", fetchers[i].__class__.__name__)
                     logger.warning(f"Fetcher {source_name} failed: {result}")
                     warnings.append(f"Failed to fetch jobs from {source_name}")
                 else:
